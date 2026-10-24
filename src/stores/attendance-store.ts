@@ -23,7 +23,15 @@ export interface AttendanceRecord {
   scannedAt: string;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Local calendar date (YYYY-MM-DD) from the device clock.
+// Do not use toISOString() here: it returns the UTC date, which is
+// yesterday for scans made between midnight and 8 AM in UTC+8.
+const localDate = (d: Date = new Date()) => {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+};
+const today = () => localDate();
 
 // MOCK DATA: this store is the only place that touches data.
 // Later, replace its functions with Supabase and Dexie calls.
@@ -67,6 +75,10 @@ export const useAttendanceStore = defineStore('attendance', () => {
         r.scan === scan,
     );
   }
+  // All records for one day (YYYY-MM-DD), used by the future records screen.
+  function recordsOn(date: string) {
+    return records.value.filter((r) => r.eventDate === date);
+  }
   // Returns false when the same record already exists today.
   function addRecord(studentId: number, session: Session, scan: ScanType) {
     if (recordFor(studentId, session, scan)) return false;
@@ -92,6 +104,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     addClass,
     addStudent,
     recordFor,
+    recordsOn,
     addRecord,
   };
 });
