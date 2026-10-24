@@ -23,6 +23,16 @@
         <q-space />
         <q-btn color="primary" icon="add" label="Add student" no-caps @click="addOpen = true" />
       </div>
+      <q-input
+        v-model="search"
+        dense
+        outlined
+        clearable
+        placeholder="Search students by name"
+        class="q-mb-md"
+      >
+        <template #prepend><q-icon name="search" /></template>
+      </q-input>
       <q-list bordered separator>
         <q-item
           v-for="s in list"
@@ -46,7 +56,9 @@
           </q-item-section>
         </q-item>
         <q-item v-if="!list.length">
-          <q-item-section class="text-grey-7">No students yet.</q-item-section>
+          <q-item-section class="text-grey-7">
+            {{ search?.trim() ? 'No students match your search.' : 'No students yet.' }}
+          </q-item-section>
         </q-item>
       </q-list>
     </div>
@@ -79,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { toDataURL } from 'qrcode';
 import { useAttendanceStore, type Student } from '../stores/attendance-store';
@@ -92,7 +104,21 @@ const classId = computed(() => {
   return typeof raw === 'string' && raw ? Number(raw) : null;
 });
 const cls = computed(() => (classId.value === null ? undefined : store.classById(classId.value)));
-const list = computed(() => (cls.value ? store.studentsOfClass(cls.value.id) : []));
+const search = ref('');
+// Clear the search when another class is opened.
+watch(classId, () => {
+  search.value = '';
+});
+
+// Students of this class matching the search, sorted A to Z by full name.
+const list = computed(() => {
+  if (!cls.value) return [];
+  const term = (search.value ?? '').trim().toLowerCase();
+  return store
+    .studentsOfClass(cls.value.id)
+    .filter((s) => s.fullName.toLowerCase().includes(term))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
+});
 
 const addOpen = ref(false);
 const newName = ref('');
