@@ -17,6 +17,7 @@
 | FR-11 | The system shall save each record with the student, date, session, check-in or check-out, and timestamp. |
 | FR-12 | The system shall allow only one record per student, date, session and check type, and shall ignore duplicates. |
 | FR-13 | The system shall ask whether to scan another QR code or return to the home screen after a record is saved. |
+| FR-14 | The system shall show each student's attendance records for a selected day in the manage student data screen, including the morning and afternoon check-in and check-out times. |
 
 ## Non-functional requirements
 

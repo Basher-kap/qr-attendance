@@ -26,7 +26,7 @@ export interface AttendanceRecord {
 // Local calendar date (YYYY-MM-DD) from the device clock.
 // Do not use toISOString() here: it returns the UTC date, which is
 // yesterday for scans made between midnight and 8 AM in UTC+8.
-const localDate = (d: Date = new Date()) => {
+export const localDate = (d: Date = new Date()) => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${month}-${day}`;
@@ -45,7 +45,34 @@ export const useAttendanceStore = defineStore('attendance', () => {
     { id: 2, classId: 1, fullName: 'Ben Cruz', qrToken: 'mock-ben' },
     { id: 3, classId: 2, fullName: 'Carla Santos', qrToken: 'mock-carla' },
   ]);
-  const records = ref<AttendanceRecord[]>([]);
+  // MOCK: a few records for yesterday so the history screen has something to show.
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const mockRecord = (
+    studentId: number,
+    session: Session,
+    scan: ScanType,
+    hour: number,
+    minute: number,
+  ): AttendanceRecord => {
+    const at = new Date(yesterday);
+    at.setHours(hour, minute, 0, 0);
+    return {
+      id: crypto.randomUUID(),
+      studentId,
+      eventDate: localDate(yesterday),
+      session,
+      scan,
+      scannedAt: at.toISOString(),
+    };
+  };
+  const records = ref<AttendanceRecord[]>([
+    mockRecord(1, 'morning', 'check_in', 7, 55),
+    mockRecord(1, 'morning', 'check_out', 12, 3),
+    mockRecord(1, 'afternoon', 'check_in', 13, 2),
+    mockRecord(1, 'afternoon', 'check_out', 17, 1),
+    mockRecord(2, 'morning', 'check_in', 8, 10),
+  ]);
   const pendingToken = ref<string | null>(null);
 
   function studentByToken(token: string) {
@@ -66,11 +93,17 @@ export const useAttendanceStore = defineStore('attendance', () => {
     const id = Math.max(0, ...students.value.map((s) => s.id)) + 1;
     students.value.push({ id, classId, fullName, qrToken: crypto.randomUUID() });
   }
-  function recordFor(studentId: number, session: Session, scan: ScanType) {
+  // The date defaults to today (YYYY-MM-DD, local time).
+  function recordFor(
+    studentId: number,
+    session: Session,
+    scan: ScanType,
+    date: string = today(),
+  ) {
     return records.value.find(
       (r) =>
         r.studentId === studentId &&
-        r.eventDate === today() &&
+        r.eventDate === date &&
         r.session === session &&
         r.scan === scan,
     );

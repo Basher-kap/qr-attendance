@@ -24,10 +24,25 @@
         <q-btn color="primary" icon="add" label="Add student" no-caps @click="addOpen = true" />
       </div>
       <q-list bordered separator>
-        <q-item v-for="s in list" :key="s.id">
-          <q-item-section>{{ s.fullName }}</q-item-section>
+        <q-item
+          v-for="s in list"
+          :key="s.id"
+          clickable
+          v-ripple
+          :to="{ name: 'student', params: { studentId: s.id } }"
+        >
+          <q-item-section>
+            <q-item-label>{{ s.fullName }}</q-item-label>
+            <q-item-label caption>Today: {{ todayCount(s.id) }} of 4 records</q-item-label>
+          </q-item-section>
           <q-item-section side>
-            <q-btn flat round icon="qr_code_2" aria-label="Show QR code" @click="showQr(s)" />
+            <q-btn
+              flat
+              round
+              icon="qr_code_2"
+              aria-label="Show QR code"
+              @click.stop.prevent="showQr(s)"
+            />
           </q-item-section>
         </q-item>
         <q-item v-if="!list.length">
@@ -87,6 +102,16 @@ function saveStudent() {
   store.addStudent(cls.value.id, name);
   newName.value = '';
   addOpen.value = false;
+}
+
+function todayCount(studentId: number) {
+  let count = 0;
+  for (const session of ['morning', 'afternoon'] as const) {
+    for (const scan of ['check_in', 'check_out'] as const) {
+      if (store.recordFor(studentId, session, scan)) count++;
+    }
+  }
+  return count;
 }
 
 const qrOpen = ref(false);
