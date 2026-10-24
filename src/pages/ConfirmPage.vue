@@ -84,7 +84,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAttendanceStore, type ScanType, type Session } from 'stores/attendance-store';
+import { useAttendanceStore, type ScanType, type Session } from 'src/stores/attendance-store';
 
 const router = useRouter();
 const store = useAttendanceStore();

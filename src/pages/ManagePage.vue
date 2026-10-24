@@ -67,7 +67,7 @@
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { toDataURL } from 'qrcode';
-import { useAttendanceStore, type Student } from 'stores/attendance-store';
+import { useAttendanceStore, type Student } from 'src/stores/attendance-store';
 
 const route = useRoute();
 const store = useAttendanceStore();
