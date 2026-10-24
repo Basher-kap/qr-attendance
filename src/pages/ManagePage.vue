@@ -43,7 +43,6 @@
         >
           <q-item-section>
             <q-item-label>{{ s.fullName }}</q-item-label>
-            <q-item-label caption>Today: {{ todayCount(s.id) }} of 4 records</q-item-label>
           </q-item-section>
           <q-item-section side>
             <q-btn
@@ -128,16 +127,6 @@ function saveStudent() {
   store.addStudent(cls.value.id, name);
   newName.value = '';
   addOpen.value = false;
-}
-
-function todayCount(studentId: number) {
-  let count = 0;
-  for (const session of ['morning', 'afternoon'] as const) {
-    for (const scan of ['check_in', 'check_out'] as const) {
-      if (store.recordFor(studentId, session, scan)) count++;
-    }
-  }
-  return count;
 }
 
 const qrOpen = ref(false);
