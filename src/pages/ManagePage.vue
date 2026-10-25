@@ -96,6 +96,7 @@
           <img v-if="qrImage" :src="qrImage" alt="Student QR code" width="240" height="240" />
         </q-card-section>
         <q-card-actions align="center">
+          <q-btn flat color="primary" icon="download" label="Download" no-caps @click="downloadQr" />
           <q-btn flat label="Close" v-close-popup />
         </q-card-actions>
       </q-card>
@@ -149,6 +150,7 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { toDataURL } from 'qrcode';
+import { downloadStudentQr } from '../utils/qr-download';
 import { useAttendanceStore, type Student } from '../stores/attendance-store';
 
 const route = useRoute();
@@ -184,6 +186,15 @@ function saveStudent() {
   store.addStudent(cls.value.id, name);
   newName.value = '';
   addOpen.value = false;
+}
+
+async function downloadQr() {
+  if (!qrStudent.value) return;
+  await downloadStudentQr(
+    qrStudent.value.fullName,
+    cls.value?.className ?? '',
+    qrStudent.value.qrToken,
+  );
 }
 
 const renameOpen = ref(false);
