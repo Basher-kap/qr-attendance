@@ -20,6 +20,7 @@
 | FR-14 | The system shall show each student's attendance records for a selected day in the manage student data screen, including the morning and afternoon check-in and check-out times. |
 | FR-15 | The system shall allow administrators to edit a student's name and class, rename a class, and delete a student or an empty class. Deleting a student also deletes their attendance records. |
 | FR-16 | The system shall allow administrators to regenerate a student's QR code, which invalidates the previous code while keeping the student's attendance records. |
+| FR-17 | The system shall let the clerk undo a record immediately after saving it, so the session or check type can be corrected. |
 
 ## Non-functional requirements
 

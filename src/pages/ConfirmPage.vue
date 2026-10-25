@@ -21,6 +21,10 @@
         </q-list>
       </q-card>
 
+      <q-banner v-if="undone" class="bg-blue-1 text-primary">
+        Record removed. Choose the correct session and type, then confirm.
+      </q-banner>
+
       <q-banner v-if="allDone" class="bg-orange-2">
         All four records are already complete for today.
       </q-banner>
@@ -70,11 +74,17 @@
         <q-card-section class="text-h6">Record saved</q-card-section>
         <q-card-section>
           {{ savedText }}
+          <div class="text-caption text-grey-7 q-mt-sm">
+            Wrong session or type? Undo removes this record.
+          </div>
           <div class="q-mt-md">Scan another QR code?</div>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat no-caps label="No, go home" @click="go('home')" />
-          <q-btn color="primary" no-caps label="Yes" @click="go('scan')" />
+        <q-card-actions align="between">
+          <q-btn flat no-caps color="negative" icon="undo" label="Undo" @click="undo" />
+          <div class="row q-gutter-sm">
+            <q-btn flat no-caps label="No, go home" @click="go('home')" />
+            <q-btn color="primary" no-caps label="Yes" @click="go('scan')" />
+          </div>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -124,6 +134,8 @@ const duplicate = computed(() =>
 
 const savedOpen = ref(false);
 const savedText = ref('');
+const savedRecordId = ref<string | null>(null);
+const undone = ref(false);
 
 onMounted(() => {
   if (!student.value) {
@@ -140,11 +152,25 @@ onMounted(() => {
 
 function confirm() {
   if (!student.value) return;
-  const ok = store.addRecord(student.value.id, session.value, scan.value);
-  if (!ok) return;
+  const record = store.addRecord(student.value.id, session.value, scan.value);
+  if (!record) return;
   const label = ORDER.find((o) => o.session === session.value && o.scan === scan.value)?.label;
-  savedText.value = `${student.value.fullName}: ${label}`;
+  const time = new Date(record.scannedAt).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  savedRecordId.value = record.id;
+  undone.value = false;
+  savedText.value = `${student.value.fullName}: ${label} at ${time}`;
   savedOpen.value = true;
+}
+
+// Removes the record that was just saved and stays on this screen to pick again.
+function undo() {
+  if (savedRecordId.value) store.removeRecord(savedRecordId.value);
+  savedRecordId.value = null;
+  savedOpen.value = false;
+  undone.value = true;
 }
 
 function cancel() {
@@ -154,6 +180,7 @@ function cancel() {
 
 function go(name: 'home' | 'scan') {
   store.pendingToken = null;
+  savedRecordId.value = null;
   savedOpen.value = false;
   void router.push({ name });
 }

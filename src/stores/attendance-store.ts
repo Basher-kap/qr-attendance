@@ -155,18 +155,23 @@ export const useAttendanceStore = defineStore('attendance', () => {
   function recordsOn(date: string) {
     return records.value.filter((r) => r.eventDate === date);
   }
-  // Returns false when the same record already exists today.
+  // Returns the saved record, or null when the same record already exists today.
   function addRecord(studentId: number, session: Session, scan: ScanType) {
-    if (recordFor(studentId, session, scan)) return false;
-    records.value.push({
+    if (recordFor(studentId, session, scan)) return null;
+    const record: AttendanceRecord = {
       id: crypto.randomUUID(),
       studentId,
       eventDate: today(),
       session,
       scan,
       scannedAt: new Date().toISOString(),
-    });
-    return true;
+    };
+    records.value.push(record);
+    return record;
+  }
+  // Used by Undo right after a record is saved.
+  function removeRecord(id: string) {
+    records.value = records.value.filter((r) => r.id !== id);
   }
 
   return {
@@ -189,5 +194,6 @@ export const useAttendanceStore = defineStore('attendance', () => {
     recordFor,
     recordsOn,
     addRecord,
+    removeRecord,
   };
 });
