@@ -86,6 +86,29 @@
           </q-item>
         </q-list>
       </q-card>
+
+      <div>
+        <div class="text-subtitle1 q-mb-sm">All recorded days</div>
+        <q-list bordered separator>
+          <q-item
+            v-for="d in historyDays"
+            :key="d.date"
+            clickable
+            v-ripple
+            :active="d.date === selectedIso"
+            @click="openDay(d.date)"
+          >
+            <q-item-section>
+              <q-item-label>{{ d.label }}</q-item-label>
+              <q-item-label caption>Morning: {{ d.morning }}</q-item-label>
+              <q-item-label caption>Afternoon: {{ d.afternoon }}</q-item-label>
+            </q-item-section>
+          </q-item>
+          <q-item v-if="!historyDays.length">
+            <q-item-section class="text-grey-7">No attendance recorded yet.</q-item-section>
+          </q-item>
+        </q-list>
+      </div>
     </div>
 
     <div v-else class="text-grey-7">Student not found.</div>
@@ -230,14 +253,14 @@ function parseIso(iso: string) {
 const selected = ref(toPicker(localDate()));
 const selectedIso = computed(() => fromPicker(selected.value));
 const isToday = computed(() => selectedIso.value >= localDate());
-const dateLabel = computed(() =>
-  parseIso(selectedIso.value).toLocaleDateString([], {
+const formatDay = (iso: string) =>
+  parseIso(iso).toLocaleDateString([], {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }),
-);
+  });
+const dateLabel = computed(() => formatDay(selectedIso.value));
 
 const notFuture = (date: string) => date <= toPicker(localDate());
 
@@ -275,5 +298,29 @@ const sessions = computed(() =>
     }),
   })),
 );
+// Every day on which this student has records, newest first.
+const historyDays = computed(() => {
+  const id = student.value?.id;
+  if (id === undefined) return [];
+  const dates = [...new Set(store.records.filter((r) => r.studentId === id).map((r) => r.eventDate))]
+    .sort()
+    .reverse();
+  const time = (date: string, session: Session, scan: ScanType) => {
+    const rec = store.recordFor(id, session, scan, date);
+    return rec ? formatTime(rec.scannedAt) : '-';
+  };
+  return dates.map((date) => ({
+    date,
+    label: formatDay(date),
+    morning: `In ${time(date, 'morning', 'check_in')} / Out ${time(date, 'morning', 'check_out')}`,
+    afternoon: `In ${time(date, 'afternoon', 'check_in')} / Out ${time(date, 'afternoon', 'check_out')}`,
+  }));
+});
+
+function openDay(date: string) {
+  selected.value = toPicker(date);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 const hasAny = computed(() => sessions.value.some((s) => s.rows.some((r) => r.done)));
 </script>
