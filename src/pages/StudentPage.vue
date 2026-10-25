@@ -10,7 +10,31 @@
           :label="className"
           @click="router.push({ name: 'manage', params: { classId: student.classId } })"
         />
-        <div class="text-h6 q-mt-sm">{{ student.fullName }}</div>
+        <div class="row items-center no-wrap q-mt-sm">
+          <div class="text-h6 col">{{ student.fullName }}</div>
+          <q-btn flat round icon="more_vert" aria-label="Student options">
+            <q-menu>
+              <q-list style="min-width: 200px">
+                <q-item clickable v-close-popup @click="showQr">
+                  <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
+                  <q-item-section>Show QR code</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="openEdit">
+                  <q-item-section avatar><q-icon name="edit" /></q-item-section>
+                  <q-item-section>Edit student</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="regenOpen = true">
+                  <q-item-section avatar><q-icon name="autorenew" /></q-item-section>
+                  <q-item-section>Regenerate QR code</q-item-section>
+                </q-item>
+                <q-item clickable v-close-popup @click="deleteOpen = true">
+                  <q-item-section avatar><q-icon name="delete" color="negative" /></q-item-section>
+                  <q-item-section class="text-negative">Delete student</q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+        </div>
       </div>
 
       <div class="row items-center no-wrap">
@@ -65,12 +89,73 @@
     </div>
 
     <div v-else class="text-grey-7">Student not found.</div>
+
+    <q-dialog v-model="qrOpen">
+      <q-card style="min-width: 300px" class="text-center">
+        <q-card-section class="text-h6">{{ student?.fullName }}</q-card-section>
+        <q-card-section>
+          <img v-if="qrImage" :src="qrImage" alt="Student QR code" width="240" height="240" />
+        </q-card-section>
+        <q-card-actions align="center">
+          <q-btn flat label="Close" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="editOpen">
+      <q-card style="min-width: 300px">
+        <q-card-section class="text-h6">Edit student</q-card-section>
+        <q-card-section class="column q-gutter-y-md">
+          <q-input v-model="editName" label="Full name" autofocus />
+          <q-select
+            v-model="editClassId"
+            :options="classOptions"
+            emit-value
+            map-options
+            label="Class"
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn color="primary" label="Save" :disable="!editName.trim()" @click="saveEdit" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="regenOpen">
+      <q-card style="min-width: 300px">
+        <q-card-section class="text-h6">Regenerate QR code?</q-card-section>
+        <q-card-section>
+          The current QR code for {{ student?.fullName }} will stop working, and any printed or
+          shared copy must be replaced. Attendance records are kept.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn color="primary" label="Regenerate" @click="regenerate" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="deleteOpen">
+      <q-card style="min-width: 300px">
+        <q-card-section class="text-h6">Delete student?</q-card-section>
+        <q-card-section>
+          {{ student?.fullName }} and all of their attendance records will be deleted. This cannot
+          be undone.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn color="negative" label="Delete" @click="confirmDelete" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { toDataURL } from 'qrcode';
 import {
   localDate,
   useAttendanceStore,
@@ -89,6 +174,50 @@ const student = computed(() => {
 const className = computed(() =>
   student.value ? (store.classById(student.value.classId)?.className ?? 'Back') : 'Back',
 );
+
+const qrOpen = ref(false);
+const qrImage = ref('');
+async function showQr() {
+  if (!student.value) return;
+  qrImage.value = await toDataURL(student.value.qrToken, { width: 240, margin: 2 });
+  qrOpen.value = true;
+}
+
+const editOpen = ref(false);
+const editName = ref('');
+const editClassId = ref(0);
+const classOptions = computed(() =>
+  store.classes.map((c) => ({ label: c.className, value: c.id })),
+);
+function openEdit() {
+  if (!student.value) return;
+  editName.value = student.value.fullName;
+  editClassId.value = student.value.classId;
+  editOpen.value = true;
+}
+function saveEdit() {
+  if (!student.value || !editName.value.trim()) return;
+  store.updateStudent(student.value.id, { fullName: editName.value, classId: editClassId.value });
+  editOpen.value = false;
+}
+
+const regenOpen = ref(false);
+async function regenerate() {
+  if (!student.value) return;
+  store.regenerateToken(student.value.id);
+  regenOpen.value = false;
+  await showQr();
+}
+
+const deleteOpen = ref(false);
+function confirmDelete() {
+  const s = student.value;
+  if (!s) return;
+  const classId = s.classId;
+  deleteOpen.value = false;
+  store.deleteStudent(s.id);
+  void router.replace({ name: 'manage', params: { classId } });
+}
 
 // The date picker uses YYYY/MM/DD. The store uses YYYY-MM-DD.
 const toPicker = (iso: string) => iso.replace(/-/g, '/');

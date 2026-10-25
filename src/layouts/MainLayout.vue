@@ -45,11 +45,23 @@
       <q-card style="min-width: 300px">
         <q-card-section class="text-h6">Add class</q-card-section>
         <q-card-section>
-          <q-input v-model="newClassName" label="Class name" autofocus @keyup.enter="saveClass" />
+          <q-input
+            v-model="newClassName"
+            label="Class name"
+            autofocus
+            :error="classTaken"
+            error-message="A class with this name already exists."
+            @keyup.enter="saveClass"
+          />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
-          <q-btn color="primary" label="Add" :disable="!newClassName.trim()" @click="saveClass" />
+          <q-btn
+            color="primary"
+            label="Add"
+            :disable="!newClassName.trim() || classTaken"
+            @click="saveClass"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -57,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAttendanceStore } from '../stores/attendance-store';
 
@@ -66,10 +78,11 @@ const store = useAttendanceStore();
 const drawer = ref(false);
 const addClassOpen = ref(false);
 const newClassName = ref('');
+const classTaken = computed(() => store.classNameTaken(newClassName.value));
 
 function saveClass() {
   const name = newClassName.value.trim();
-  if (!name) return;
+  if (!name || classTaken.value) return;
   const id = store.addClass(name);
   newClassName.value = '';
   addClassOpen.value = false;

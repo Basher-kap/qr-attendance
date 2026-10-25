@@ -78,6 +78,9 @@ export const useAttendanceStore = defineStore('attendance', () => {
   function studentByToken(token: string) {
     return students.value.find((s) => s.qrToken === token);
   }
+  function studentById(id: number) {
+    return students.value.find((s) => s.id === id);
+  }
   function classById(id: number) {
     return classes.value.find((c) => c.id === id);
   }
@@ -88,6 +91,46 @@ export const useAttendanceStore = defineStore('attendance', () => {
     const id = Math.max(0, ...classes.value.map((c) => c.id)) + 1;
     classes.value.push({ id, className });
     return id;
+  }
+  // Class names are unique (case-insensitive), like the unique rule in the database.
+  function classNameTaken(name: string, exceptId?: number) {
+    const wanted = name.trim().toLowerCase();
+    return classes.value.some(
+      (c) => c.id !== exceptId && c.className.trim().toLowerCase() === wanted,
+    );
+  }
+  function renameClass(id: number, className: string) {
+    const cls = classById(id);
+    if (!cls || classNameTaken(className, id)) return false;
+    cls.className = className.trim();
+    return true;
+  }
+  // A class that still has students cannot be deleted (on delete restrict).
+  function deleteClass(id: number): 'ok' | 'has-students' {
+    if (students.value.some((s) => s.classId === id)) return 'has-students';
+    classes.value = classes.value.filter((c) => c.id !== id);
+    return 'ok';
+  }
+  function updateStudent(id: number, changes: { fullName: string; classId: number }) {
+    const student = studentById(id);
+    if (!student) return;
+    student.fullName = changes.fullName.trim();
+    student.classId = changes.classId;
+  }
+  // Deleting a student also deletes their attendance records (on delete cascade).
+  function deleteStudent(id: number) {
+    const student = studentById(id);
+    if (student && pendingToken.value === student.qrToken) pendingToken.value = null;
+    students.value = students.value.filter((s) => s.id !== id);
+    records.value = records.value.filter((r) => r.studentId !== id);
+  }
+  // Gives the student a new QR token. Attendance records stay linked by student id.
+  function regenerateToken(id: number) {
+    const student = studentById(id);
+    if (!student) return null;
+    if (pendingToken.value === student.qrToken) pendingToken.value = null;
+    student.qrToken = crypto.randomUUID();
+    return student.qrToken;
   }
   function addStudent(classId: number, fullName: string) {
     const id = Math.max(0, ...students.value.map((s) => s.id)) + 1;
@@ -132,10 +175,17 @@ export const useAttendanceStore = defineStore('attendance', () => {
     records,
     pendingToken,
     studentByToken,
+    studentById,
     classById,
     studentsOfClass,
     addClass,
+    classNameTaken,
+    renameClass,
+    deleteClass,
     addStudent,
+    updateStudent,
+    deleteStudent,
+    regenerateToken,
     recordFor,
     recordsOn,
     addRecord,
