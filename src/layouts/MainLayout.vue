@@ -34,6 +34,8 @@
           <q-item-section avatar><q-icon name="add" /></q-item-section>
           <q-item-section>Add class</q-item-section>
         </q-item>
+        <q-separator class="q-my-sm" />
+        <q-item-label caption class="q-px-md q-pb-sm text-grey-7">{{ dbStatus }}</q-item-label>
       </q-list>
     </q-drawer>
 
@@ -69,13 +71,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { checkConnection } from '../lib/supabase';
 import { useAttendanceStore } from '../stores/attendance-store';
 
 const router = useRouter();
 const store = useAttendanceStore();
 const drawer = ref(false);
+const dbStatus = ref('Checking database...');
+
+//check status display of database connection
+onMounted(() => {
+  void checkConnection().then((result) => {
+    if (result.status === 'connected') dbStatus.value = 'Database: connected';
+    else if (result.status === 'not-configured') dbStatus.value = 'Database: not set up (sample data)';
+    else dbStatus.value = `Database error: ${result.message ?? 'unknown'}`;
+  });
+});
 const addClassOpen = ref(false);
 const newClassName = ref('');
 const classTaken = computed(() => store.classNameTaken(newClassName.value));
