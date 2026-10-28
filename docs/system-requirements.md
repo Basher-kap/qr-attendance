@@ -23,7 +23,7 @@
 | FR-17 | The system shall let the clerk undo a record immediately after saving it, so the session or check type can be corrected. |
 | FR-18 | The system shall allow clerks to download a student's QR code as an image that shows the student's name and class. |
 | FR-19 | The system shall import classes and students from an .xlsx spreadsheet with one sheet per class and a Full Name column, showing a preview first and skipping students that already exist. |
-| FR-20 | The system shall export classes, students and the attendance of a chosen day to an .xlsx spreadsheet using the same template (No.#, Full Name, Morning-in, Morning-out, Afternoon-in, Afternoon-out, QR Code). |
+| FR-20 | The system shall export classes, students and attendance to an .xlsx spreadsheet using the same template (No.#, Full Name, Morning-in, Morning-out, Afternoon-in, Afternoon-out, QR Code), showing in each check-in and check-out column the day the student was confirmed after scanning. |
 
 ## Non-functional requirements
 

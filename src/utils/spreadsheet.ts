@@ -12,7 +12,6 @@ export const HEADERS = [
   'QR Code',
 ] as const;
 
-const CHECK = '\u2713';
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
@@ -45,7 +44,7 @@ function sheetName(raw: string, used: Set<string>) {
 }
 
 function addHeader(ws: Worksheet) {
-  ws.columns = [{ width: 8 }, { width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 40 }];
+  ws.columns = [{ width: 8 }, { width: 30 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 40 }];
   const header = ws.addRow([...HEADERS]);
   header.font = { bold: true };
   header.eachCell((cell) => {
@@ -67,19 +66,24 @@ export interface ExportData {
   records: AttendanceRecord[];
 }
 
-// One sheet per class. A check mark shows which check-ins and check-outs happened on the chosen day.
-export async function buildExport(data: ExportData, date: string) {
+// One sheet per class. Each check-in and check-out column shows the day(s) (YYYY-MM-DD) on which
+// the student was confirmed after scanning. Several days are separated by commas.
+export async function buildExport(data: ExportData) {
   const Excel = await loadExcel();
   const wb = new Excel.Workbook();
-  wb.title = `QR Attendee ${date}`;
 
-  const present = new Set(
-    data.records
-      .filter((r) => r.eventDate === date)
-      .map((r) => `${r.studentId}|${r.session}|${r.scan}`),
-  );
-  const mark = (id: number, session: string, scan: string) =>
-    present.has(`${id}|${session}|${scan}`) ? CHECK : '';
+  const daysBySlot = new Map<string, Set<string>>();
+  for (const r of data.records) {
+    const key = `${r.studentId}|${r.session}|${r.scan}`;
+    let days = daysBySlot.get(key);
+    if (!days) {
+      days = new Set();
+      daysBySlot.set(key, days);
+    }
+    days.add(r.eventDate);
+  }
+  const confirmedDays = (id: number, session: string, scan: string) =>
+    [...(daysBySlot.get(`${id}|${session}|${scan}`) ?? [])].sort().join(', ');
 
   const used = new Set<string>();
   const classes = [...data.classes].sort((a, b) =>
@@ -95,10 +99,10 @@ export async function buildExport(data: ExportData, date: string) {
         ws.addRow([
           i + 1,
           s.fullName,
-          mark(s.id, 'morning', 'check_in'),
-          mark(s.id, 'morning', 'check_out'),
-          mark(s.id, 'afternoon', 'check_in'),
-          mark(s.id, 'afternoon', 'check_out'),
+          confirmedDays(s.id, 'morning', 'check_in'),
+          confirmedDays(s.id, 'morning', 'check_out'),
+          confirmedDays(s.id, 'afternoon', 'check_in'),
+          confirmedDays(s.id, 'afternoon', 'check_out'),
           s.qrToken,
         ]);
       });
@@ -117,7 +121,7 @@ export async function buildTemplate() {
 }
 
 // Reads classes (one per sheet) and students (Full Name column) from a workbook.
-// The check marks are ignored. A QR Code value is kept when it contains a valid code.
+// The attendance columns are ignored. A QR Code value is kept when it contains a valid code.
 export async function parseStudents(buffer: ArrayBuffer): Promise<ImportPlan> {
   const Excel = await loadExcel();
   const wb = new Excel.Workbook();

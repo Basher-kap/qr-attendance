@@ -9,10 +9,9 @@
       <q-card-section class="text-h6">Export to spreadsheet</q-card-section>
       <q-card-section class="column q-gutter-y-md">
         <div class="text-grey-7">
-          One sheet per class. A check mark shows each check-in and check-out recorded on the
-          chosen day.
+          One sheet per class. The Morning and Afternoon in/out columns show the day each student
+          was confirmed after scanning.
         </div>
-        <q-input v-model="exportDate" type="date" label="Attendance day" outlined />
         <q-banner dense class="bg-orange-1 text-grey-9">
           The QR Code column holds each student's QR value. Keep the file private.
         </q-banner>
@@ -25,7 +24,6 @@
           no-caps
           label="Download"
           :loading="busy"
-          :disable="!exportDate"
           @click="doExport"
         />
       </q-card-actions>
@@ -40,7 +38,7 @@
         <q-card-section class="column q-gutter-y-md">
           <div class="text-grey-7">
             Use an .xlsx file with one sheet per class. The sheet name is the class name, and each
-            row needs a Full Name. The check marks are not imported.
+            row needs a Full Name. The attendance columns are not imported.
           </div>
           <q-file
             v-model="file"
@@ -130,11 +128,9 @@ const error = ref('');
 
 // Export
 const exportOpen = ref(false);
-const exportDate = ref(localDate());
 
 function openExport() {
   error.value = '';
-  exportDate.value = localDate();
   exportOpen.value = true;
 }
 
@@ -142,11 +138,12 @@ async function doExport() {
   busy.value = true;
   error.value = '';
   try {
-    const blob = await buildExport(
-      { classes: store.classes, students: store.students, records: store.records },
-      exportDate.value,
-    );
-    saveFile(blob, `QR_Attendee_${exportDate.value}.xlsx`);
+    const blob = await buildExport({
+      classes: store.classes,
+      students: store.students,
+      records: store.records,
+    });
+    saveFile(blob, `QR_Attendee_${localDate()}.xlsx`);
     exportOpen.value = false;
   } catch {
     error.value = 'The spreadsheet could not be created.';

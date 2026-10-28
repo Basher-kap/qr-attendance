@@ -7,7 +7,10 @@ const url = env.QCLI_SUPABASE_URL;
 const key = env.QCLI_SUPABASE_KEY;
 
 // Stays null when the variables are missing, so the app still runs with sample data.
-export const supabase = url && key ? createClient(url, key) : null;
+// flowType 'pkce' returns the sign-in result as ?code=... in the address. The default
+// (implicit) puts tokens after the # sign, which clashes with this app's #/ page routes.
+export const supabase =
+  url && key ? createClient(url, key, { auth: { flowType: 'pkce' } }) : null;
 
 export type ConnectionStatus = {
   status: 'not-configured' | 'connected' | 'error';
