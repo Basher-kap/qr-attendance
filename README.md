@@ -4,8 +4,9 @@ A QR code-based student attendance monitoring system for event premises. Student
 
 ## Features
 
-- Google sign-in with role-based access (admin and clerk)
-- Manage classes and students, with each student's QR code viewable in the app
+- Google sign-in limited to an allow-list of clerks (student access planned)
+- Manage classes and students, with each student's QR code viewable and downloadable in the app
+- Import and export classes, students and attendance as .xlsx spreadsheets
 - Scan a student's QR code with the device camera, review the details, and confirm
 - Morning and afternoon check-in and check-out, with a timestamp for every scan
 - Offline-first: scans are saved on the device and synced when the connection returns
