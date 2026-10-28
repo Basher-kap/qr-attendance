@@ -33,6 +33,29 @@ export const localDate = (d: Date = new Date()) => {
 };
 const today = () => localDate();
 
+// Spreadsheet import types.
+export interface ParsedStudent {
+  fullName: string;
+  qrToken?: string;
+}
+export interface ImportPlan {
+  classes: { name: string; students: ParsedStudent[] }[];
+  warnings: string[];
+}
+export interface ImportPreviewRow {
+  name: string;
+  isNewClass: boolean;
+  toAdd: number;
+  alreadyThere: number;
+}
+export interface ImportSummary {
+  classesAdded: number;
+  studentsAdded: number;
+  studentsSkipped: number;
+  tokensReplaced: number;
+}
+const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
 // MOCK DATA: this store is the only place that touches data.
 // Later, replace its functions with Supabase and Dexie calls.
 export const useAttendanceStore = defineStore('attendance', () => {
@@ -132,9 +155,56 @@ export const useAttendanceStore = defineStore('attendance', () => {
     student.qrToken = crypto.randomUUID();
     return student.qrToken;
   }
-  function addStudent(classId: number, fullName: string) {
+  function addStudent(classId: number, fullName: string, qrToken: string = crypto.randomUUID()) {
     const id = Math.max(0, ...students.value.map((s) => s.id)) + 1;
-    students.value.push({ id, classId, fullName, qrToken: crypto.randomUUID() });
+    students.value.push({ id, classId, fullName, qrToken });
+  }
+
+  // Shows what an import would do, without changing anything.
+  function previewImport(plan: ImportPlan): ImportPreviewRow[] {
+    return plan.classes.map((c) => {
+      const cls = classes.value.find((x) => sameText(x.className, c.name));
+      const existing = cls ? studentsOfClass(cls.id) : [];
+      const alreadyThere = c.students.filter((s) =>
+        existing.some((e) => sameText(e.fullName, s.fullName)),
+      ).length;
+      return { name: c.name, isNewClass: !cls, toAdd: c.students.length - alreadyThere, alreadyThere };
+    });
+  }
+
+  // Adds missing classes and students. Existing students (same name in the same class) are skipped.
+  // A QR value from the file is kept when it is not used yet, so printed codes stay valid.
+  function applyImport(plan: ImportPlan): ImportSummary {
+    const summary: ImportSummary = {
+      classesAdded: 0,
+      studentsAdded: 0,
+      studentsSkipped: 0,
+      tokensReplaced: 0,
+    };
+    const usedTokens = new Set(students.value.map((s) => s.qrToken));
+    for (const c of plan.classes) {
+      let cls = classes.value.find((x) => sameText(x.className, c.name));
+      if (!cls) {
+        cls = classById(addClass(c.name.trim()));
+        summary.classesAdded++;
+      }
+      if (!cls) continue;
+      for (const s of c.students) {
+        if (studentsOfClass(cls.id).some((e) => sameText(e.fullName, s.fullName))) {
+          summary.studentsSkipped++;
+          continue;
+        }
+        let token = s.qrToken;
+        if (!token || usedTokens.has(token)) {
+          if (token) summary.tokensReplaced++;
+          token = crypto.randomUUID();
+        }
+        usedTokens.add(token);
+        addStudent(cls.id, s.fullName, token);
+        summary.studentsAdded++;
+      }
+    }
+    return summary;
   }
   // The date defaults to today (YYYY-MM-DD, local time).
   function recordFor(
@@ -189,6 +259,8 @@ export const useAttendanceStore = defineStore('attendance', () => {
     deleteClass,
     addStudent,
     updateStudent,
+    previewImport,
+    applyImport,
     deleteStudent,
     regenerateToken,
     recordFor,
