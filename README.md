@@ -4,7 +4,8 @@ A QR code-based student attendance monitoring system for event premises. Student
 
 ## Features
 
-- Google sign-in limited to an allow-list of clerks (student access planned)
+- Opens straight on the home screen. Guests can use every feature, with data saved on the device
+- Optional Google sign-in to retrieve and save data in the cloud (in progress)
 - Manage classes and students, with each student's QR code viewable and downloadable in the app
 - Import and export classes, students and attendance as .xlsx spreadsheets
 - Scan a student's QR code with the device camera, review the details, and confirm
@@ -72,7 +73,8 @@ src/         application source
 - [x] Business case, requirements, diagrams and ERD
 - [x] Project scaffold and GitHub repository
 - [ ] Supabase project and database schema
-- [ ] Google sign-in and roles
+- [x] Guest mode with data saved on the device
+- [ ] Google sign-in and cloud data
 - [ ] Manage classes and students
 - [ ] Scan flow
 - [ ] Offline sync

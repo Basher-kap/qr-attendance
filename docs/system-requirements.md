@@ -4,8 +4,8 @@
 
 | ID | Requirement |
 |---|---|
-| FR-01 | The system shall let users sign in and out with Google from an account button in the header, showing Google's account chooser, and shall grant access only to authorized accounts. |
-| FR-02 | The system shall support the clerk role, who scans QR codes, manages classes and students, and views attendance records. A student role, limited to a table of names and each student's own QR code download, is planned for a later release. |
+| FR-01 | The system shall open directly on the home screen without requiring sign-in, and shall let users optionally sign in and out with Google from an account button in the header, showing Google's account chooser. |
+| FR-02 | The system shall let any user, signed in or not, scan QR codes, manage classes and students, and view attendance records. A student role, limited to a table of names and each student's own QR code download, is planned for a later release. |
 | FR-03 | The system shall show a home screen with the actions to scan a QR code and to manage student data. |
 | FR-04 | The system shall allow clerks to add classes and students manually, and to view the students in each class. |
 | FR-05 | The system shall generate a unique, persistent QR code for each student and display it in the manage student data screen. |
@@ -24,6 +24,8 @@
 | FR-18 | The system shall allow clerks to download a student's QR code as an image that shows the student's name and class. |
 | FR-19 | The system shall import classes and students from an .xlsx spreadsheet with one sheet per class and a Full Name column, showing a preview first and skipping students that already exist. |
 | FR-20 | The system shall export classes, students and attendance to an .xlsx spreadsheet using the same template (No.#, Full Name, Morning-in, Morning-out, Afternoon-in, Afternoon-out, QR Code), showing in each check-in and check-out column the day the student was confirmed after scanning. |
+| FR-21 | The system shall save the data of users who are not signed in on their own device, so it is still there after the page is refreshed or reopened. |
+| FR-22 | (Planned) The system shall let a user who signs in with Google retrieve and save their data in the cloud. |
 
 ## Non-functional requirements
 

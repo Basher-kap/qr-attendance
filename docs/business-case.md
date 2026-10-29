@@ -10,7 +10,8 @@ Each registered student is added manually to the system, which generates a persi
 
 | User | Role |
 |---|---|
-| Attendance clerk | Scans student QR codes, confirms attendance records, manages classes and students, and reviews attendance |
+| Guest (not signed in) | Uses every feature; data is saved on the device |
+| Signed-in user (Google) | Same features, with data retrieved from and saved to their account (planned) |
 | Student (planned) | Later: views a table of names and downloads their own QR code |
 
 ## In scope
