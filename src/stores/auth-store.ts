@@ -3,17 +3,13 @@ import { computed, ref } from 'vue';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-// Every allowed account is a clerk for now. A student role is planned for later.
-export type Role = 'clerk';
-export type AuthStatus = 'loading' | 'signed-out' | 'not-authorized' | 'ready' | 'error';
-
-// Google sign-in through Supabase, plus the allow-list check against app_users.
-// Without Supabase settings (no .env), the app stays open and uses sample data.
+// Google sign-in through Supabase. Signing in is optional: guests can use every feature,
+// and their data is saved on the device. Without Supabase settings (no .env), the sign-in
+// button is hidden and the app works as a guest app only.
 export const useAuthStore = defineStore('auth', () => {
   const enabled = supabase !== null;
   const session = ref<Session | null>(null);
-  const role = ref<Role | null>(null);
-  const status = ref<AuthStatus>(enabled ? 'loading' : 'ready');
+  const ready = ref(!enabled);
   const errorMessage = ref('');
   let started = false;
 
@@ -31,48 +27,19 @@ export const useAuthStore = defineStore('auth', () => {
     return typeof url === 'string' ? url : '';
   });
 
-  // The app opens only for allowed accounts (or always in sample-data mode).
-  const canUse = computed(() => !enabled || status.value === 'ready');
-
-  async function refreshRole() {
-    if (!supabase) return;
-    if (!session.value) {
-      role.value = null;
-      status.value = 'signed-out';
-      return;
-    }
-    const { data, error } = await supabase
-      .from('app_users')
-      .select('email')
-      .eq('email', email.value.toLowerCase())
-      .maybeSingle();
-    if (error) {
-      errorMessage.value = error.message;
-      status.value = 'error';
-      return;
-    }
-    if (data) {
-      // On the allow-list. Everyone is a clerk for now; student access will read the role column later.
-      role.value = 'clerk';
-      status.value = 'ready';
-    } else {
-      role.value = null;
-      status.value = 'not-authorized';
-    }
-  }
-
   async function init() {
     if (!supabase || started) return;
     started = true;
-    const { data } = await supabase.auth.getSession();
-    session.value = data.session;
-    await refreshRole();
+    try {
+      const { data } = await supabase.auth.getSession();
+      session.value = data.session;
+    } catch (e) {
+      errorMessage.value = e instanceof Error ? e.message : 'Could not check the sign-in.';
+    } finally {
+      ready.value = true;
+    }
     supabase.auth.onAuthStateChange((_event, next) => {
       session.value = next;
-      // Do not call Supabase straight from this callback; defer it.
-      setTimeout(() => {
-        void refreshRole();
-      }, 0);
     });
   }
 
@@ -80,6 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
   // including the "Use another account" option.
   async function signIn() {
     if (!supabase) return;
+    errorMessage.value = '';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -87,33 +55,30 @@ export const useAuthStore = defineStore('auth', () => {
         queryParams: { prompt: 'select_account' },
       },
     });
-    if (error) {
-      errorMessage.value = error.message;
-      status.value = 'error';
-    }
+    if (error) errorMessage.value = error.message;
   }
 
   async function signOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
     session.value = null;
-    role.value = null;
-    status.value = 'signed-out';
+  }
+
+  function clearError() {
+    errorMessage.value = '';
   }
 
   return {
     enabled,
-    status,
-    role,
+    ready,
     errorMessage,
     email,
     signedIn,
     displayName,
     avatarUrl,
-    canUse,
     init,
-    refreshRole,
     signIn,
     signOut,
+    clearError,
   };
 });

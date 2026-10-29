@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 export type Session = 'morning' | 'afternoon';
 export type ScanType = 'check_in' | 'check_out';
@@ -56,47 +56,61 @@ export interface ImportSummary {
 }
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-// MOCK DATA: this store is the only place that touches data.
-// Later, replace its functions with Supabase and Dexie calls.
-export const useAttendanceStore = defineStore('attendance', () => {
-  const classes = ref<ClassItem[]>([
-    { id: 1, className: '1st Year' },
-    { id: 2, className: '2nd Year' },
-  ]);
-  const students = ref<Student[]>([
-    { id: 1, classId: 1, fullName: 'Ana Reyes', qrToken: 'mock-ana' },
-    { id: 2, classId: 1, fullName: 'Ben Cruz', qrToken: 'mock-ben' },
-    { id: 3, classId: 2, fullName: 'Carla Santos', qrToken: 'mock-carla' },
-  ]);
-  // MOCK: a few records for yesterday so the history screen has something to show.
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const mockRecord = (
-    studentId: number,
-    session: Session,
-    scan: ScanType,
-    hour: number,
-    minute: number,
-  ): AttendanceRecord => {
-    const at = new Date(yesterday);
-    at.setHours(hour, minute, 0, 0);
+// Guest mode: everything is saved in this browser (localStorage), so it survives a refresh.
+// Signing in with Google will later load and save the same data in the cloud instead.
+// This store is the only place that touches data.
+const STORAGE_KEY = 'qr-attendance:guest:v1';
+
+interface SavedData {
+  classes: ClassItem[];
+  students: Student[];
+  records: AttendanceRecord[];
+}
+
+function loadSaved(): SavedData {
+  const empty: SavedData = { classes: [], students: [], records: [] };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return empty;
+    const data = JSON.parse(raw) as Partial<SavedData>;
     return {
-      id: crypto.randomUUID(),
-      studentId,
-      eventDate: localDate(yesterday),
-      session,
-      scan,
-      scannedAt: at.toISOString(),
+      classes: Array.isArray(data.classes) ? data.classes : [],
+      students: Array.isArray(data.students) ? data.students : [],
+      records: Array.isArray(data.records) ? data.records : [],
     };
-  };
-  const records = ref<AttendanceRecord[]>([
-    mockRecord(1, 'morning', 'check_in', 7, 55),
-    mockRecord(1, 'morning', 'check_out', 12, 3),
-    mockRecord(1, 'afternoon', 'check_in', 13, 2),
-    mockRecord(1, 'afternoon', 'check_out', 17, 1),
-    mockRecord(2, 'morning', 'check_in', 8, 10),
-  ]);
+  } catch {
+    return empty;
+  }
+}
+
+export const useAttendanceStore = defineStore('attendance', () => {
+  const saved = loadSaved();
+  const classes = ref<ClassItem[]>(saved.classes);
+  const students = ref<Student[]>(saved.students);
+  const records = ref<AttendanceRecord[]>(saved.records);
   const pendingToken = ref<string | null>(null);
+
+  // True when the browser refused to save (storage full or blocked).
+  const saveFailed = ref(false);
+  watch(
+    [classes, students, records],
+    () => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            classes: classes.value,
+            students: students.value,
+            records: records.value,
+          }),
+        );
+        saveFailed.value = false;
+      } catch {
+        saveFailed.value = true;
+      }
+    },
+    { deep: true },
+  );
 
   function studentByToken(token: string) {
     return students.value.find((s) => s.qrToken === token);
@@ -249,6 +263,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     students,
     records,
     pendingToken,
+    saveFailed,
     studentByToken,
     studentById,
     classById,

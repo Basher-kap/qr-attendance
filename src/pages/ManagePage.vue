@@ -16,6 +16,12 @@
           <q-item-section>{{ c.className }}</q-item-section>
           <q-item-section side>{{ store.studentsOfClass(c.id).length }} students</q-item-section>
         </q-item>
+        <q-item v-if="!store.classes.length">
+          <q-item-section class="text-grey-7">
+            No classes yet. Add one from the menu (the three lines at the top left), or use Import
+            above.
+          </q-item-section>
+        </q-item>
       </q-list>
     </div>
 

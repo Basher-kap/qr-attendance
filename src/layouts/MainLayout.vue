@@ -7,7 +7,7 @@
           QR Attendance
         </q-toolbar-title>
         <q-btn
-          v-if="auth.enabled && auth.status !== 'loading'"
+          v-if="auth.enabled && auth.ready"
           flat
           dense
           no-caps
@@ -49,46 +49,26 @@
           <q-item-section>Add class</q-item-section>
         </q-item>
         <q-separator class="q-my-sm" />
-        <q-item-label caption class="q-px-md text-grey-7">{{ dbStatus }}</q-item-label>
-        <q-item-label v-if="auth.signedIn" caption class="q-px-md q-pb-sm text-grey-7">
-          Signed in as {{ auth.displayName }}
+        <q-item-label caption class="q-px-md text-grey-7">
+          {{ auth.signedIn ? `Signed in as ${auth.displayName}` : 'Guest' }}
+        </q-item-label>
+        <q-item-label caption class="q-px-md q-pb-sm text-grey-7">
+          Data is saved on this device.
         </q-item-label>
       </q-list>
     </q-drawer>
 
     <q-page-container>
-      <router-view v-if="auth.canUse" />
-      <q-page v-else class="column items-center justify-center q-pa-md text-center q-gutter-y-md">
-        <q-spinner v-if="auth.status === 'loading'" size="40px" color="primary" />
-
-        <template v-else-if="auth.status === 'not-authorized'">
-          <q-icon name="block" size="56px" color="negative" />
-          <div class="text-h6">Account not authorized</div>
-          <div class="text-grey-7" style="max-width: 320px">
-            {{ auth.email }} is not on the list of allowed users. Ask an administrator to add it,
-            or use another account.
-          </div>
-          <q-btn color="primary" no-caps icon="swap_horiz" label="Use another account" @click="auth.signIn" />
-          <q-btn flat no-caps label="Log out" @click="auth.signOut" />
+      <q-banner v-if="auth.errorMessage" dense class="bg-red-1 text-negative">
+        {{ auth.errorMessage }}
+        <template #action>
+          <q-btn flat no-caps label="Dismiss" @click="auth.clearError" />
         </template>
-
-        <template v-else-if="auth.status === 'error'">
-          <q-icon name="error_outline" size="56px" color="negative" />
-          <div class="text-h6">Something went wrong</div>
-          <div class="text-grey-7" style="max-width: 320px">{{ auth.errorMessage }}</div>
-          <q-btn color="primary" no-caps icon="refresh" label="Try again" @click="auth.refreshRole" />
-          <q-btn v-if="auth.signedIn" flat no-caps label="Log out" @click="auth.signOut" />
-        </template>
-
-        <template v-else>
-          <q-icon name="account_circle" size="64px" color="grey-6" />
-          <div class="text-h6">Sign in to continue</div>
-          <div class="text-grey-7" style="max-width: 320px">
-            Use your Google account to open QR Attendance.
-          </div>
-          <q-btn color="primary" no-caps icon="login" label="Sign in with Google" @click="auth.signIn" />
-        </template>
-      </q-page>
+      </q-banner>
+      <q-banner v-if="store.saveFailed" dense class="bg-orange-2 text-grey-9">
+        Your data could not be saved on this device. Export a spreadsheet to keep your work.
+      </q-banner>
+      <router-view />
     </q-page-container>
 
     <q-dialog v-model="addClassOpen">
@@ -121,7 +101,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { checkConnection } from '../lib/supabase';
 import { useAttendanceStore } from '../stores/attendance-store';
 import { useAuthStore } from '../stores/auth-store';
 
@@ -129,7 +108,6 @@ const router = useRouter();
 const store = useAttendanceStore();
 const auth = useAuthStore();
 const drawer = ref(false);
-const dbStatus = ref('Checking database...');
 
 function onAccountClick() {
   if (auth.signedIn) void auth.signOut();
@@ -138,12 +116,8 @@ function onAccountClick() {
 
 onMounted(() => {
   void auth.init();
-  void checkConnection().then((result) => {
-    if (result.status === 'connected') dbStatus.value = 'Database: connected';
-    else if (result.status === 'not-configured') dbStatus.value = 'Database: not set up (sample data)';
-    else dbStatus.value = `Database error: ${result.message ?? 'unknown'}`;
-  });
 });
+
 const addClassOpen = ref(false);
 const newClassName = ref('');
 const classTaken = computed(() => store.classNameTaken(newClassName.value));
