@@ -53,7 +53,11 @@
           {{ auth.signedIn ? `Signed in as ${auth.displayName}` : 'Guest' }}
         </q-item-label>
         <q-item-label caption class="q-px-md q-pb-sm text-grey-7">
-          Data is saved on this device.
+          {{
+            store.mode === 'cloud'
+              ? 'Data is saved in your Google account.'
+              : 'Data is saved on this device.'
+          }}
         </q-item-label>
       </q-list>
     </q-drawer>
@@ -65,11 +69,56 @@
           <q-btn flat no-caps label="Dismiss" @click="auth.clearError" />
         </template>
       </q-banner>
+      <q-banner v-if="store.syncError" dense class="bg-red-1 text-negative">
+        Could not save to your account: {{ store.syncError }}
+        <template #action>
+          <q-btn flat no-caps label="Reload data" @click="store.reloadCloud" />
+          <q-btn flat no-caps label="Dismiss" @click="store.clearSyncError" />
+        </template>
+      </q-banner>
       <q-banner v-if="store.saveFailed" dense class="bg-orange-2 text-grey-9">
         Your data could not be saved on this device. Export a spreadsheet to keep your work.
       </q-banner>
-      <router-view />
+
+      <router-view v-if="store.ready" />
+      <q-page v-else class="column items-center justify-center q-pa-md text-center q-gutter-y-md">
+        <template v-if="store.loadError">
+          <q-icon name="cloud_off" size="56px" color="negative" />
+          <div class="text-h6">Could not load your data</div>
+          <div class="text-grey-7" style="max-width: 320px">{{ store.loadError }}</div>
+          <q-btn color="primary" no-caps icon="refresh" label="Try again" @click="store.reloadCloud" />
+          <q-btn flat no-caps label="Log out" @click="onAccountClick" />
+        </template>
+        <q-spinner v-else size="40px" color="primary" />
+      </q-page>
     </q-page-container>
+
+    <q-dialog :model-value="!!store.guestOffer" persistent>
+      <q-card style="min-width: 300px; max-width: 420px">
+        <q-card-section class="text-h6">Upload this device's data?</q-card-section>
+        <q-card-section v-if="store.guestOffer">
+          Your account has no data yet, and this device has
+          {{ store.guestOffer.classes.length }}
+          {{ store.guestOffer.classes.length === 1 ? 'class' : 'classes' }},
+          {{ store.guestOffer.students.length }}
+          {{ store.guestOffer.students.length === 1 ? 'student' : 'students' }} and
+          {{ store.guestOffer.records.length }}
+          {{ store.guestOffer.records.length === 1 ? 'record' : 'records' }}. Upload them to your
+          Google account to open them wherever you sign in. A copy stays on this device and shows
+          again when you log out.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Not now" :disable="store.uploading" @click="store.dismissOffer" />
+          <q-btn
+            color="primary"
+            no-caps
+            label="Upload"
+            :loading="store.uploading"
+            @click="store.uploadGuestData"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-model="addClassOpen">
       <q-card style="min-width: 300px">
@@ -109,9 +158,13 @@ const store = useAttendanceStore();
 const auth = useAuthStore();
 const drawer = ref(false);
 
-function onAccountClick() {
-  if (auth.signedIn) void auth.signOut();
-  else void auth.signIn();
+async function onAccountClick() {
+  if (auth.signedIn) {
+    await store.flush(); // let pending changes reach the account before logging out
+    await auth.signOut();
+  } else {
+    await auth.signIn();
+  }
 }
 
 onMounted(() => {

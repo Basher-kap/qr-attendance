@@ -174,7 +174,7 @@ const store = useAttendanceStore();
 
 const classId = computed(() => {
   const raw = route.params.classId;
-  return typeof raw === 'string' && raw ? Number(raw) : null;
+  return typeof raw === 'string' && raw ? raw : null;
 });
 const cls = computed(() => (classId.value === null ? undefined : store.classById(classId.value)));
 const search = ref('');

@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   let started = false;
 
   const user = computed(() => session.value?.user ?? null);
+  const userId = computed(() => user.value?.id ?? '');
   const email = computed(() => user.value?.email ?? '');
   const signedIn = computed(() => session.value !== null);
 
@@ -72,6 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
     enabled,
     ready,
     errorMessage,
+    userId,
     email,
     signedIn,
     displayName,

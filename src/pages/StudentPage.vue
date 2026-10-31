@@ -193,7 +193,8 @@ const router = useRouter();
 const store = useAttendanceStore();
 
 const student = computed(() => {
-  const id = Number(route.params.studentId);
+  const raw = route.params.studentId;
+  const id = typeof raw === 'string' ? raw : '';
   return store.students.find((s) => s.id === id);
 });
 const className = computed(() =>
@@ -219,7 +220,7 @@ async function downloadQr() {
 
 const editOpen = ref(false);
 const editName = ref('');
-const editClassId = ref(0);
+const editClassId = ref('');
 const classOptions = computed(() =>
   store.classes.map((c) => ({ label: c.className, value: c.id })),
 );

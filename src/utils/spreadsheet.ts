@@ -82,7 +82,7 @@ export async function buildExport(data: ExportData) {
     }
     days.add(r.eventDate);
   }
-  const confirmedDays = (id: number, session: string, scan: string) =>
+  const confirmedDays = (id: string, session: string, scan: string) =>
     [...(daysBySlot.get(`${id}|${session}|${scan}`) ?? [])].sort().join(', ');
 
   const used = new Set<string>();
