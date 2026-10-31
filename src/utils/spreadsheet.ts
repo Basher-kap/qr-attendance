@@ -44,7 +44,15 @@ function sheetName(raw: string, used: Set<string>) {
 }
 
 function addHeader(ws: Worksheet) {
-  ws.columns = [{ width: 8 }, { width: 30 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 40 }];
+  ws.columns = [
+    { width: 8 },
+    { width: 30 },
+    { width: 22 },
+    { width: 22 },
+    { width: 22 },
+    { width: 22 },
+    { width: 40 },
+  ];
   const header = ws.addRow([...HEADERS]);
   header.font = { bold: true };
   header.eachCell((cell) => {
@@ -157,7 +165,9 @@ export async function parseStudents(buffer: ArrayBuffer): Promise<ImportPlan> {
       if (!fullName) continue;
       const key = fullName.toLowerCase();
       if (seen.has(key)) {
-        plan.warnings.push(`"${className}": the repeated name "${fullName}" (row ${r}) was ignored.`);
+        plan.warnings.push(
+          `"${className}": the repeated name "${fullName}" (row ${r}) was ignored.`,
+        );
         continue;
       }
       seen.add(key);
@@ -179,4 +189,81 @@ export function saveFile(blob: Blob, filename: string) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Clock time of a scan, e.g. "8:02 AM", from the device's local time.
+function clockTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const h = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${h % 12 || 12}:${minutes} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+const DAILY_HEADERS = [
+  'No.#',
+  'Full Name',
+  'Class',
+  'Morning-in',
+  'Morning-out',
+  'Afternoon-in',
+  'Afternoon-out',
+  'Status',
+] as const;
+
+// One sheet named "{date} Attendance" with every student of every class and the time of each
+// check-in and check-out on that date, so a cell never holds more than one value.
+// A student with at least one record on the date is Present, otherwise Absent.
+export async function buildDailyExport(data: ExportData, date: string) {
+  const Excel = await loadExcel();
+  const wb = new Excel.Workbook();
+  const ws = wb.addWorksheet(sheetName(`${date} Attendance`, new Set()));
+  ws.columns = [
+    { width: 8 },
+    { width: 30 },
+    { width: 18 },
+    { width: 16 },
+    { width: 16 },
+    { width: 16 },
+    { width: 16 },
+    { width: 12 },
+  ];
+  const header = ws.addRow([...DAILY_HEADERS]);
+  header.font = { bold: true };
+  header.eachCell((cell) => {
+    cell.border = { bottom: { style: 'thin' } };
+  });
+  for (const col of [4, 5, 6, 7, 8]) ws.getColumn(col).alignment = { horizontal: 'center' };
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.autoFilter = { from: 'A1', to: 'H1' };
+
+  const timeBySlot = new Map<string, string>();
+  const present = new Set<string>();
+  for (const r of data.records) {
+    if (r.eventDate !== date) continue;
+    present.add(r.studentId);
+    timeBySlot.set(`${r.studentId}|${r.session}|${r.scan}`, clockTime(r.scannedAt));
+  }
+  const time = (id: string, session: string, scan: string) =>
+    timeBySlot.get(`${id}|${session}|${scan}`) ?? '';
+
+  const classes = [...data.classes].sort((a, b) =>
+    a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: 'base' }),
+  );
+  let n = 0;
+  for (const c of classes) {
+    for (const st of data.students.filter((x) => x.classId === c.id).sort(byName)) {
+      ws.addRow([
+        ++n,
+        st.fullName,
+        c.className,
+        time(st.id, 'morning', 'check_in'),
+        time(st.id, 'morning', 'check_out'),
+        time(st.id, 'afternoon', 'check_in'),
+        time(st.id, 'afternoon', 'check_out'),
+        present.has(st.id) ? 'Present' : 'Absent',
+      ]);
+    }
+  }
+  return toBlob(wb);
 }
