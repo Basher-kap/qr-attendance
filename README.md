@@ -5,7 +5,7 @@ A QR code-based student attendance monitoring system for event premises. Student
 ## Features
 
 - Opens straight on the home screen. Guests can use every feature, with data saved on the device
-- Optional Google sign-in to retrieve and save data in the cloud (in progress)
+- Optional Google sign-in: data is saved in the user's own account and is private to it. Device data can be uploaded after the first sign-in
 - Manage classes and students, with each student's QR code viewable and downloadable in the app
 - Import and export classes, students and attendance as .xlsx spreadsheets
 - Scan a student's QR code with the device camera, review the details, and confirm
@@ -19,7 +19,7 @@ A QR code-based student attendance monitoring system for event premises. Student
 |---|---|
 | App | Quasar (Vue 3, TypeScript), PWA mode |
 | Offline storage | IndexedDB via Dexie, Workbox service worker |
-| Authentication | Google OAuth through Supabase Auth |
+| Authentication | Google OAuth through Supabase Auth (optional) |
 | Database | Supabase (PostgreSQL) with row level security |
 | Hosting | To be decided |
 
@@ -72,10 +72,10 @@ src/         application source
 
 - [x] Business case, requirements, diagrams and ERD
 - [x] Project scaffold and GitHub repository
-- [ ] Supabase project and database schema
+- [x] Supabase project and database schema
 - [x] Guest mode with data saved on the device
-- [ ] Google sign-in and cloud data
-- [ ] Manage classes and students
-- [ ] Scan flow
+- [x] Google sign-in and private cloud data per account
+- [x] Manage classes and students
+- [x] Scan flow
 - [ ] Offline sync
-- [ ] Deployment
+- [x] Deployment (Vercel)

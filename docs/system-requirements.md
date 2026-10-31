@@ -25,7 +25,8 @@
 | FR-19 | The system shall import classes and students from an .xlsx spreadsheet with one sheet per class and a Full Name column, showing a preview first and skipping students that already exist. |
 | FR-20 | The system shall export classes, students and attendance to an .xlsx spreadsheet using the same template (No.#, Full Name, Morning-in, Morning-out, Afternoon-in, Afternoon-out, QR Code), showing in each check-in and check-out column the day the student was confirmed after scanning. |
 | FR-21 | The system shall save the data of users who are not signed in on their own device, so it is still there after the page is refreshed or reopened. |
-| FR-22 | (Planned) The system shall let a user who signs in with Google retrieve and save their data in the cloud. |
+| FR-22 | The system shall let a user who signs in with Google load and save their own classes, students and attendance in their account. The data is private to that account. |
+| FR-23 | The system shall offer to upload the data saved on the device to the account after sign-in when the account has no data yet, and shall show the device data again after log out. |
 
 ## Non-functional requirements
 
@@ -33,6 +34,6 @@
 |---|---|
 | NFR-01 | The system shall work offline, saving records on the device and synchronizing them when a connection is restored. |
 | NFR-02 | The system shall run on mobile and desktop browsers and be installable as a PWA. |
-| NFR-03 | The QR token shall be unguessable, and access rules shall be enforced by the database (row level security). |
+| NFR-03 | The QR token shall be unguessable, and access rules shall be enforced by the database (row level security) so each account sees only its own data. |
 | NFR-04 | Secret keys shall never be stored in the repository or in client code. |
 | NFR-05 | Recording an attendance scan shall take as few steps as possible. |
