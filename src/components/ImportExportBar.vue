@@ -1,15 +1,10 @@
 <template>
-  <div class="row q-gutter-sm q-mb-md">
-    <q-btn outline color="primary" no-caps icon="upload_file" label="Import" @click="openImport" />
-    <q-btn outline color="primary" no-caps icon="download" label="Export" @click="openExport" />
-  </div>
-
   <q-dialog v-model="exportOpen">
     <q-card style="min-width: 320px; max-width: 420px">
       <q-card-section class="text-h6">Export to spreadsheet</q-card-section>
       <q-card-section class="column q-gutter-y-md">
         <div class="text-grey-7">
-          One sheet per class. The Morning and Afternoon in/out columns show the day each student
+          Every class becomes its own sheet (tab) in one file. The Morning and Afternoon in/out columns show the day each student
           was confirmed after scanning.
         </div>
         <q-banner dense class="bg-orange-1 text-grey-9">
@@ -37,8 +32,8 @@
       <template v-if="step === 'pick'">
         <q-card-section class="column q-gutter-y-md">
           <div class="text-grey-7">
-            Use an .xlsx file with one sheet per class. The sheet name is the class name, and each
-            row needs a Full Name. The attendance columns are not imported.
+            Use an .xlsx file with one sheet (tab) per class. All sheets are imported together. The
+            sheet name is the class name, and each row needs a Full Name. The attendance columns are not imported.
           </div>
           <q-file
             v-model="file"
@@ -206,4 +201,5 @@ function doImport() {
 async function getTemplate() {
   saveFile(await buildTemplate(), 'QR_Attendee_Template.xlsx');
 }
+defineExpose({ openImport, openExport });
 </script>

@@ -49,6 +49,22 @@
           <q-item-section>Add class</q-item-section>
         </q-item>
         <q-separator class="q-my-sm" />
+        <q-item-label header>Spreadsheet</q-item-label>
+        <q-item clickable v-ripple @click="openSheet('import')">
+          <q-item-section avatar><q-icon name="upload_file" /></q-item-section>
+          <q-item-section>
+            <q-item-label>Import</q-item-label>
+            <q-item-label caption>Classes and students from .xlsx</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item clickable v-ripple @click="openSheet('export')">
+          <q-item-section avatar><q-icon name="download" /></q-item-section>
+          <q-item-section>
+            <q-item-label>Export</q-item-label>
+            <q-item-label caption>All classes to .xlsx</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-separator class="q-my-sm" />
         <q-item-label caption class="q-px-md text-grey-7">
           {{ auth.signedIn ? `Signed in as ${auth.displayName}` : 'Guest' }}
         </q-item-label>
@@ -92,6 +108,8 @@
         <q-spinner v-else size="40px" color="primary" />
       </q-page>
     </q-page-container>
+
+    <ImportExportBar ref="sheets" />
 
     <q-dialog :model-value="!!store.guestOffer" persistent>
       <q-card style="min-width: 300px; max-width: 420px">
@@ -150,6 +168,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import ImportExportBar from '../components/ImportExportBar.vue';
 import { useAttendanceStore } from '../stores/attendance-store';
 import { useAuthStore } from '../stores/auth-store';
 
@@ -157,6 +176,13 @@ const router = useRouter();
 const store = useAttendanceStore();
 const auth = useAuthStore();
 const drawer = ref(false);
+const sheets = ref<InstanceType<typeof ImportExportBar> | null>(null);
+
+function openSheet(kind: 'import' | 'export') {
+  drawer.value = false;
+  if (kind === 'import') sheets.value?.openImport();
+  else sheets.value?.openExport();
+}
 
 async function onAccountClick() {
   if (auth.signedIn) {

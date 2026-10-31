@@ -1,7 +1,5 @@
 <template>
   <q-page padding>
-    <ImportExportBar />
-
     <div v-if="!cls">
       <div class="text-h6 q-mb-md">Manage student data</div>
       <div class="text-grey-7 q-mb-md">Choose a class to view or add students.</div>
@@ -19,7 +17,7 @@
         <q-item v-if="!store.classes.length">
           <q-item-section class="text-grey-7">
             No classes yet. Add one from the menu (the three lines at the top left), or use Import
-            above.
+            there.
           </q-item-section>
         </q-item>
       </q-list>
@@ -166,7 +164,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { toDataURL } from 'qrcode';
 import { downloadStudentQr } from '../utils/qr-download';
 import { useAttendanceStore, type Student } from '../stores/attendance-store';
-import ImportExportBar from '../components/ImportExportBar.vue';
 
 const route = useRoute();
 const router = useRouter();
