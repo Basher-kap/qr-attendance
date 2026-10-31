@@ -1,9 +1,4 @@
 <template>
-  <div class="row q-gutter-sm q-mb-md">
-    <q-btn outline color="primary" no-caps icon="upload_file" label="Import" @click="openImport" />
-    <q-btn outline color="primary" no-caps icon="download" label="Export" @click="openExport" />
-  </div>
-
   <q-dialog v-model="exportOpen">
     <q-card style="min-width: 320px; max-width: 420px">
       <q-card-section class="text-h6">Export to spreadsheet</q-card-section>
@@ -19,13 +14,7 @@
       </q-card-section>
       <q-card-actions align="right">
         <q-btn flat no-caps label="Cancel" v-close-popup />
-        <q-btn
-          color="primary"
-          no-caps
-          label="Download"
-          :loading="busy"
-          @click="doExport"
-        />
+        <q-btn color="primary" no-caps label="Download" :loading="busy" @click="doExport" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -50,7 +39,15 @@
           >
             <template #prepend><q-icon name="attach_file" /></template>
           </q-file>
-          <q-btn flat dense no-caps color="primary" icon="description" label="Download blank template" @click="getTemplate" />
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            icon="description"
+            label="Download blank template"
+            @click="getTemplate"
+          />
           <q-banner v-if="error" dense class="bg-red-1 text-negative">{{ error }}</q-banner>
         </q-card-section>
         <q-card-actions align="right">
@@ -69,10 +66,8 @@
                   <q-badge v-if="row.isNewClass" color="primary" class="q-ml-sm">New class</q-badge>
                 </q-item-label>
                 <q-item-label caption>
-                  {{ row.toAdd }} new {{ row.toAdd === 1 ? 'student' : 'students' }}<span
-                    v-if="row.alreadyThere"
-                    >, {{ row.alreadyThere }} already in the app</span
-                  >
+                  {{ row.toAdd }} new {{ row.toAdd === 1 ? 'student' : 'students'
+                  }}<span v-if="row.alreadyThere">, {{ row.alreadyThere }} already in the app</span>
                 </q-item-label>
               </q-item-section>
             </q-item>
@@ -202,6 +197,9 @@ function doImport() {
   summary.value = store.applyImport(plan.value);
   step.value = 'done';
 }
+
+// The Import and Export items live in the side menu, which opens these dialogs.
+defineExpose({ openImport, openExport });
 
 async function getTemplate() {
   saveFile(await buildTemplate(), 'QR_Attendee_Template.xlsx');

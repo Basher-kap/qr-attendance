@@ -1,7 +1,5 @@
 <template>
   <q-page padding>
-    <ImportExportBar />
-
     <div v-if="!cls">
       <div class="text-h6 q-mb-md">Manage student data</div>
       <div class="text-grey-7 q-mb-md">Choose a class to view or add students.</div>
@@ -19,7 +17,7 @@
         <q-item v-if="!store.classes.length">
           <q-item-section class="text-grey-7">
             No classes yet. Add one from the menu (the three lines at the top left), or use Import
-            above.
+            from the same menu.
           </q-item-section>
         </q-item>
       </q-list>
@@ -43,13 +41,7 @@
           </q-menu>
         </q-btn>
         <q-space />
-        <q-btn
-          color="primary"
-          icon="add"
-          label="Add student"
-          no-caps
-          @click="addOpen = true"
-        />
+        <q-btn color="primary" icon="add" label="Add student" no-caps @click="addOpen = true" />
       </div>
       <q-input
         v-model="search"
@@ -110,7 +102,14 @@
           <img v-if="qrImage" :src="qrImage" alt="Student QR code" width="240" height="240" />
         </q-card-section>
         <q-card-actions align="center">
-          <q-btn flat color="primary" icon="download" label="Download" no-caps @click="downloadQr" />
+          <q-btn
+            flat
+            color="primary"
+            icon="download"
+            label="Download"
+            no-caps
+            @click="downloadQr"
+          />
           <q-btn flat label="Close" v-close-popup />
         </q-card-actions>
       </q-card>
@@ -153,7 +152,12 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat :label="studentCount > 0 ? 'OK' : 'Cancel'" v-close-popup />
-          <q-btn v-if="studentCount === 0" color="negative" label="Delete" @click="confirmDeleteClass" />
+          <q-btn
+            v-if="studentCount === 0"
+            color="negative"
+            label="Delete"
+            @click="confirmDeleteClass"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -166,7 +170,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { toDataURL } from 'qrcode';
 import { downloadStudentQr } from '../utils/qr-download';
 import { useAttendanceStore, type Student } from '../stores/attendance-store';
-import ImportExportBar from '../components/ImportExportBar.vue';
 
 const route = useRoute();
 const router = useRouter();

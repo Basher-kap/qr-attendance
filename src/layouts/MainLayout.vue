@@ -30,6 +30,16 @@
           <q-item-section>Home</q-item-section>
         </q-item>
         <q-separator class="q-my-sm" />
+        <q-item-label header>Spreadsheet</q-item-label>
+        <q-item clickable v-ripple @click="openImport">
+          <q-item-section avatar><q-icon name="upload_file" /></q-item-section>
+          <q-item-section>Import</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple @click="openExport">
+          <q-item-section avatar><q-icon name="download" /></q-item-section>
+          <q-item-section>Export</q-item-section>
+        </q-item>
+        <q-separator class="q-my-sm" />
         <q-item-label header>Classes</q-item-label>
         <q-item
           v-for="c in store.classes"
@@ -94,6 +104,8 @@
         <q-spinner color="primary" size="40px" />
       </div>
     </q-page-container>
+
+    <ImportExportBar ref="importExport" />
 
     <q-dialog v-model="addClassOpen">
       <q-card style="min-width: 300px">
@@ -206,11 +218,23 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAttendanceStore, type UploadSummary } from '../stores/attendance-store';
 import { useAuthStore } from '../stores/auth-store';
+import ImportExportBar from '../components/ImportExportBar.vue';
 
 const router = useRouter();
 const store = useAttendanceStore();
 const auth = useAuthStore();
 const drawer = ref(false);
+
+// Import and export open from the menu. One workbook holds every class, one sheet per class.
+const importExport = ref<InstanceType<typeof ImportExportBar> | null>(null);
+function openImport() {
+  drawer.value = false;
+  importExport.value?.openImport();
+}
+function openExport() {
+  drawer.value = false;
+  importExport.value?.openExport();
+}
 
 const logoutConfirmOpen = ref(false);
 function onAccountClick() {
