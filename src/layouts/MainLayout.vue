@@ -72,8 +72,12 @@
           {{
             store.mode === 'cloud'
               ? 'Data is saved in your Google account.'
-              : 'Data is saved on this device.'
+              : 'Data is saved on this device only.'
           }}
+        </q-item-label>
+        <q-item-label v-if="store.mode === 'guest'" caption class="q-px-md q-pb-sm text-negative">
+          Clearing the browser's data or switching devices erases it. Export a spreadsheet to keep
+          a copy, or sign in to save it in your account.
         </q-item-label>
       </q-list>
     </q-drawer>
@@ -84,6 +88,11 @@
         <template #action>
           <q-btn flat no-caps label="Dismiss" @click="auth.clearError" />
         </template>
+      </q-banner>
+      <q-banner v-if="store.mode === 'cloud' && !online" dense class="bg-orange-2 text-grey-9">
+        You are offline. Changes cannot be saved to your account until you reconnect, so do not
+        rely on anything you record now. Keep this page open and check again when you are back
+        online.
       </q-banner>
       <q-banner v-if="store.syncError" dense class="bg-red-1 text-negative">
         Could not save to your account: {{ store.syncError }}
@@ -110,6 +119,27 @@
     </q-page-container>
 
     <ImportExportBar ref="sheets" />
+
+    <q-dialog v-model="logoutOpen">
+      <q-card style="min-width: 300px; max-width: 420px">
+        <q-card-section class="text-h6">Log out with unsaved changes?</q-card-section>
+        <q-card-section>
+          <template v-if="store.syncError">
+            Some changes could not be saved to your account: {{ store.syncError }}
+          </template>
+          <template v-else>
+            {{ store.pendingSync }}
+            {{ store.pendingSync === 1 ? 'change has' : 'changes have' }} not reached your account
+            yet.
+          </template>
+          If you log out now, they may be lost.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Stay signed in" v-close-popup />
+          <q-btn color="negative" no-caps label="Log out anyway" @click="logOut" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <q-dialog :model-value="!!store.guestOffer" persistent>
       <q-card style="min-width: 300px; max-width: 420px">
@@ -166,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import ImportExportBar from '../components/ImportExportBar.vue';
 import { useAttendanceStore } from '../stores/attendance-store';
@@ -184,17 +214,44 @@ function openSheet(kind: 'import' | 'export') {
   else sheets.value?.openExport();
 }
 
+const logoutOpen = ref(false);
+
+async function logOut() {
+  logoutOpen.value = false;
+  await store.flush(); // let pending changes reach the account before logging out
+  await auth.signOut();
+}
+
 async function onAccountClick() {
-  if (auth.signedIn) {
-    await store.flush(); // let pending changes reach the account before logging out
-    await auth.signOut();
-  } else {
+  if (!auth.signedIn) {
     await auth.signIn();
+  } else if (store.pendingSync > 0 || store.syncError) {
+    logoutOpen.value = true; // changes would be lost: ask first
+  } else {
+    await logOut();
   }
+}
+
+// Warn when the connection is lost, and when the tab is closed with changes still being sent.
+const online = ref(true);
+const setOnline = () => {
+  online.value = navigator.onLine;
+};
+function warnBeforeLeaving(e: BeforeUnloadEvent) {
+  if (store.mode === 'cloud' && (store.pendingSync > 0 || store.syncError)) e.preventDefault();
 }
 
 onMounted(() => {
   void auth.init();
+  setOnline();
+  window.addEventListener('online', setOnline);
+  window.addEventListener('offline', setOnline);
+  window.addEventListener('beforeunload', warnBeforeLeaving);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('online', setOnline);
+  window.removeEventListener('offline', setOnline);
+  window.removeEventListener('beforeunload', warnBeforeLeaving);
 });
 
 const addClassOpen = ref(false);

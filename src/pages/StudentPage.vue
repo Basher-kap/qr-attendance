@@ -164,8 +164,14 @@
       <q-card style="min-width: 300px">
         <q-card-section class="text-h6">Delete student?</q-card-section>
         <q-card-section>
-          {{ student?.fullName }} and all of their attendance records will be deleted. This cannot
-          be undone.
+          {{ student?.fullName }} and
+          {{ recordCount === 1 ? 'their 1 attendance record' : `all ${recordCount} of their attendance records` }}
+          will be permanently deleted. This cannot be undone.
+        </q-card-section>
+        <q-card-section v-if="recordCount > 0" class="q-pt-none">
+          <q-banner dense class="bg-red-1 text-negative">
+            Attendance history will be lost. Export a spreadsheet first if you need a copy.
+          </q-banner>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" v-close-popup />
@@ -245,6 +251,9 @@ async function regenerate() {
 }
 
 const deleteOpen = ref(false);
+const recordCount = computed(
+  () => store.records.filter((r) => r.studentId === student.value?.id).length,
+);
 function confirmDelete() {
   const s = student.value;
   if (!s) return;

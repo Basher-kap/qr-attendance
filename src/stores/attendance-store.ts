@@ -173,11 +173,18 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   // ---- Cloud: changes are applied on screen at once, then sent in order ----
   let chain: Promise<void> = Promise.resolve();
+  const pendingSync = ref(0); // changes shown on screen that have not reached the account yet
   function sync(task: () => Promise<void>) {
     if (mode.value !== 'cloud') return;
-    chain = chain.then(task).catch((e: unknown) => {
-      if (mode.value === 'cloud') syncError.value = message(e);
-    });
+    pendingSync.value++;
+    chain = chain
+      .then(task)
+      .catch((e: unknown) => {
+        if (mode.value === 'cloud') syncError.value = message(e);
+      })
+      .finally(() => {
+        pendingSync.value--;
+      });
   }
   // Resolves when everything waiting to be sent has been sent.
   const flush = () => chain;
@@ -461,6 +468,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     loading,
     loadError,
     syncError,
+    pendingSync,
     saveFailed,
     guestOffer,
     uploading,
