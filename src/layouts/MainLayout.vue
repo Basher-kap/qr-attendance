@@ -75,9 +75,31 @@
               : 'Data is saved on this device only.'
           }}
         </q-item-label>
+        <q-item
+          v-if="store.mode === 'cloud' && store.offerDeferred"
+          clickable
+          v-ripple
+          @click="
+            drawer = false;
+            store.reopenOffer();
+          "
+        >
+          <q-item-section avatar><q-icon name="cloud_upload" /></q-item-section>
+          <q-item-section>
+            <q-item-label>Sync device data</q-item-label>
+            <q-item-label caption>Send what this device recorded as a guest</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item-label
+          v-if="store.mode === 'cloud' && store.lastVerifiedAt"
+          caption
+          class="q-px-md q-pb-sm text-grey-7"
+        >
+          Last checked: {{ new Date(store.lastVerifiedAt).toLocaleString() }}
+        </q-item-label>
         <q-item-label v-if="store.mode === 'guest'" caption class="q-px-md q-pb-sm text-negative">
-          Clearing the browser's data or switching devices erases it. Export a spreadsheet to keep
-          a copy, or sign in to save it in your account.
+          Clearing the browser's data or switching devices erases it. Export a spreadsheet to keep a
+          copy, or sign in to save it in your account.
         </q-item-label>
       </q-list>
     </q-drawer>
@@ -90,9 +112,8 @@
         </template>
       </q-banner>
       <q-banner v-if="store.mode === 'cloud' && !online" dense class="bg-orange-2 text-grey-9">
-        You are offline. Changes cannot be saved to your account until you reconnect, so do not
-        rely on anything you record now. Keep this page open and check again when you are back
-        online.
+        You are offline. Changes cannot be saved to your account until you reconnect, so do not rely
+        on anything you record now. Keep this page open and check again when you are back online.
       </q-banner>
       <q-banner v-if="store.syncError" dense class="bg-red-1 text-negative">
         Could not save to your account: {{ store.syncError }}
@@ -111,7 +132,13 @@
           <q-icon name="cloud_off" size="56px" color="negative" />
           <div class="text-h6">Could not load your data</div>
           <div class="text-grey-7" style="max-width: 320px">{{ store.loadError }}</div>
-          <q-btn color="primary" no-caps icon="refresh" label="Try again" @click="store.reloadCloud" />
+          <q-btn
+            color="primary"
+            no-caps
+            icon="refresh"
+            label="Try again"
+            @click="store.reloadCloud"
+          />
           <q-btn flat no-caps label="Log out" @click="onAccountClick" />
         </template>
         <q-spinner v-else size="40px" color="primary" />
@@ -143,27 +170,110 @@
 
     <q-dialog :model-value="!!store.guestOffer" persistent>
       <q-card style="min-width: 300px; max-width: 420px">
-        <q-card-section class="text-h6">Upload this device's data?</q-card-section>
-        <q-card-section v-if="store.guestOffer">
-          Your account has no data yet, and this device has
-          {{ store.guestOffer.classes.length }}
-          {{ store.guestOffer.classes.length === 1 ? 'class' : 'classes' }},
-          {{ store.guestOffer.students.length }}
-          {{ store.guestOffer.students.length === 1 ? 'student' : 'students' }} and
-          {{ store.guestOffer.records.length }}
-          {{ store.guestOffer.records.length === 1 ? 'record' : 'records' }}. Upload them to your
-          Google account to open them wherever you sign in. A copy stays on this device and shows
-          again when you log out.
+        <q-card-section class="text-h6"
+          >Sync this device's data to your Google account?</q-card-section
+        >
+        <q-card-section v-if="store.guestOffer && store.mergeStats" class="column q-gutter-y-sm">
+          <div>
+            Before you signed in, this device recorded {{ store.guestOffer.classes.length }}
+            {{ store.guestOffer.classes.length === 1 ? 'class' : 'classes' }},
+            {{ store.guestOffer.students.length }}
+            {{ store.guestOffer.students.length === 1 ? 'student' : 'students' }} and
+            {{ store.guestOffer.records.length }} attendance
+            {{ store.guestOffer.records.length === 1 ? 'record' : 'records' }}.
+          </div>
+          <div>
+            Syncing adds {{ store.mergeStats.classesAdded }}
+            {{ store.mergeStats.classesAdded === 1 ? 'class' : 'classes' }},
+            {{ store.mergeStats.studentsAdded }}
+            {{ store.mergeStats.studentsAdded === 1 ? 'student' : 'students' }} and
+            {{ store.mergeStats.recordsAdded }} attendance
+            {{ store.mergeStats.recordsAdded === 1 ? 'record' : 'records' }} to your account.
+            Afterwards the app checks that every one arrived.
+          </div>
+          <div
+            v-if="store.mergeStats.studentsMatched || store.mergeStats.recordsSkipped"
+            class="text-grey-7"
+          >
+            Classes and students with the same name are treated as the same, and records that are
+            already in your account are skipped. Nothing in your account is changed or deleted.
+          </div>
+          <q-banner v-if="store.mergeStats.tokensReplaced" dense class="bg-orange-1 text-grey-9">
+            {{ store.mergeStats.tokensReplaced }}
+            {{ store.mergeStats.tokensReplaced === 1 ? 'student gets' : 'students get' }} a new QR
+            code because the old one is already used by another student in your account. Print
+            {{ store.mergeStats.tokensReplaced === 1 ? 'it' : 'them' }} again.
+          </q-banner>
+          <div class="text-grey-7">
+            A copy stays on this device and shows again when you log out.
+          </div>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat no-caps label="Not now" :disable="store.uploading" @click="store.dismissOffer" />
+          <q-btn flat no-caps label="Not now" @click="store.dismissOffer" />
+          <q-btn color="primary" no-caps label="Sync now" @click="store.uploadGuestData" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="store.syncReportOpen">
+      <q-card v-if="store.syncReport" style="min-width: 300px; max-width: 420px">
+        <q-card-section class="text-h6">Syncing to your Google account</q-card-section>
+        <q-card-section class="column q-gutter-y-sm">
+          <div class="row items-center no-wrap q-gutter-x-sm">
+            <q-spinner
+              v-if="store.syncReport.phase === 'sending' || store.syncReport.phase === 'verifying'"
+              color="primary"
+              size="24px"
+            />
+            <q-icon
+              v-else-if="store.syncReport.phase === 'done'"
+              name="check_circle"
+              color="positive"
+              size="24px"
+            />
+            <q-icon v-else name="error" color="negative" size="24px" />
+            <div>
+              <template v-if="store.syncReport.phase === 'sending'">
+                Sending to your account…
+              </template>
+              <template v-else-if="store.syncReport.phase === 'verifying'">
+                Checking that everything arrived…
+              </template>
+              <template v-else-if="store.syncReport.phase === 'done'">
+                Done. Everything from this device is in your account.
+              </template>
+              <template v-else>Some data could not be confirmed in your account.</template>
+            </div>
+          </div>
+          <div class="text-grey-7">
+            {{ store.syncReport.added.classes }}
+            {{ store.syncReport.added.classes === 1 ? 'class' : 'classes' }},
+            {{ store.syncReport.added.students }}
+            {{ store.syncReport.added.students === 1 ? 'student' : 'students' }} and
+            {{ store.syncReport.added.records }} attendance
+            {{ store.syncReport.added.records === 1 ? 'record' : 'records' }} sent.
+          </div>
+          <div v-if="store.syncReport.phase === 'done'" class="text-grey-7">
+            Your account now holds {{ store.syncReport.verifiedRecords }} attendance
+            {{ store.syncReport.verifiedRecords === 1 ? 'record' : 'records' }} in total.
+          </div>
+          <q-banner v-if="store.syncReport.phase === 'issues'" dense class="bg-red-1 text-negative">
+            Not confirmed: {{ store.syncReport.missing.classes }} classes,
+            {{ store.syncReport.missing.students }} students,
+            {{ store.syncReport.missing.records }} attendance records.
+            {{ store.syncReport.error }} They are still on this device, and you will be asked to
+            sync again at your next sign-in.
+          </q-banner>
+        </q-card-section>
+        <q-card-actions align="right">
           <q-btn
-            color="primary"
+            v-if="store.syncReport.phase === 'issues'"
+            flat
             no-caps
-            label="Upload"
-            :loading="store.uploading"
-            @click="store.uploadGuestData"
+            label="Try again"
+            @click="store.retryVerify"
           />
+          <q-btn color="primary" no-caps label="Close" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>

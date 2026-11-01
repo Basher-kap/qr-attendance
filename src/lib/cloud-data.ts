@@ -74,24 +74,20 @@ export async function fetchAllData() {
   ]);
   return {
     classes: classes.map((c): ClassItem => ({ id: c.id, className: c.class_name })),
-    students: students.map(
-      (s): Student => ({
-        id: s.id,
-        classId: s.class_id,
-        fullName: s.full_name,
-        qrToken: s.qr_token,
-      }),
-    ),
-    records: records.map(
-      (r): AttendanceRecord => ({
-        id: r.id,
-        studentId: r.student_id,
-        eventDate: r.event_date,
-        session: r.session,
-        scan: r.scan,
-        scannedAt: r.scanned_at,
-      }),
-    ),
+    students: students.map((s): Student => ({
+      id: s.id,
+      classId: s.class_id,
+      fullName: s.full_name,
+      qrToken: s.qr_token,
+    })),
+    records: records.map((r): AttendanceRecord => ({
+      id: r.id,
+      studentId: r.student_id,
+      eventDate: r.event_date,
+      session: r.session,
+      scan: r.scan,
+      scannedAt: r.scanned_at,
+    })),
   };
 }
 
@@ -106,8 +102,12 @@ async function insertChunks(table: string, rows: object[], upsertOn?: string) {
   }
 }
 
-export const insertClasses = (list: ClassItem[]) => insertChunks('classes', list.map(toClassRow));
-export const insertStudents = (list: Student[]) => insertChunks('students', list.map(toStudentRow));
+// Classes and students are added with "do nothing if it exists", so sending them again (for
+// example to repair a sync that did not fully arrive) is harmless.
+export const insertClasses = (list: ClassItem[]) =>
+  insertChunks('classes', list.map(toClassRow), 'id');
+export const insertStudents = (list: Student[]) =>
+  insertChunks('students', list.map(toStudentRow), 'id');
 // A repeated record (same student, day, session and type) is ignored instead of failing.
 export const insertRecords = (list: AttendanceRecord[]) =>
   insertChunks('attendance', list.map(toRecordRow), 'student_id,event_date,session,scan');

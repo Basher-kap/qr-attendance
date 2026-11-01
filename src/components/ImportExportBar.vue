@@ -14,7 +14,8 @@
         <template v-if="exportKind === 'all'">
           <div class="text-grey-7">
             Every class becomes its own sheet (tab) in one file. The Morning and Afternoon in/out
-            columns show the day each student was confirmed after scanning.
+            columns hold the date and time of every scan, so importing the file again restores each
+            student's attendance.
           </div>
           <q-banner dense class="bg-orange-1 text-grey-9">
             The QR Code column holds each student's QR value. Keep the file private.
@@ -69,8 +70,9 @@
         <q-card-section class="column q-gutter-y-md">
           <div class="text-grey-7">
             Use an .xlsx file with one sheet (tab) per class. All sheets are imported together. The
-            sheet name is the class name, and each row needs a Full Name. The attendance columns are
-            not imported.
+            sheet name is the class name, and each row needs a Full Name. Attendance in the Morning
+            and Afternoon in/out columns is imported too (a date and time such as 2026-11-01
+            08:02:00, or a date alone).
           </div>
           <q-file
             v-model="file"
@@ -112,6 +114,13 @@
                   {{ row.toAdd }} new {{ row.toAdd === 1 ? 'student' : 'students'
                   }}<span v-if="row.alreadyThere">, {{ row.alreadyThere }} already in the app</span>
                 </q-item-label>
+                <q-item-label v-if="row.recordsToAdd || row.recordsAlreadyThere" caption>
+                  {{ row.recordsToAdd }} attendance
+                  {{ row.recordsToAdd === 1 ? 'record' : 'records' }} to add<span
+                    v-if="row.recordsAlreadyThere"
+                    >, {{ row.recordsAlreadyThere }} already in the app</span
+                  >
+                </q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
@@ -132,8 +141,16 @@
             {{ summary.studentsAdded === 1 ? 'student' : 'students' }} and
             {{ summary.classesAdded }} {{ summary.classesAdded === 1 ? 'class' : 'classes' }}.
           </div>
+          <div>
+            Added {{ summary.recordsAdded }} attendance
+            {{ summary.recordsAdded === 1 ? 'record' : 'records' }}.
+          </div>
           <div v-if="summary.studentsSkipped" class="text-grey-7">
             Skipped {{ summary.studentsSkipped }} already in the app.
+          </div>
+          <div v-if="summary.recordsSkipped" class="text-grey-7">
+            Skipped {{ summary.recordsSkipped }} attendance
+            {{ summary.recordsSkipped === 1 ? 'record' : 'records' }} already in the app.
           </div>
           <div v-if="summary.tokensReplaced" class="text-grey-7">
             {{ summary.tokensReplaced }} QR
@@ -218,7 +235,9 @@ const plan = ref<ImportPlan | null>(null);
 const preview = ref<ImportPreviewRow[]>([]);
 const summary = ref<ImportSummary | null>(null);
 
-const canImport = computed(() => preview.value.some((r) => r.toAdd > 0 || r.isNewClass));
+const canImport = computed(() =>
+  preview.value.some((r) => r.toAdd > 0 || r.isNewClass || r.recordsToAdd > 0),
+);
 
 function reset() {
   step.value = 'pick';

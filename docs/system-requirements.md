@@ -22,11 +22,11 @@
 | FR-16 | The system shall allow clerks to regenerate a student's QR code, which invalidates the previous code while keeping the student's attendance records. |
 | FR-17 | The system shall let the clerk undo a record immediately after saving it, so the session or check type can be corrected. |
 | FR-18 | The system shall allow clerks to download a student's QR code as an image that shows the student's name and class. |
-| FR-19 | The system shall import classes and students from an .xlsx spreadsheet with one sheet per class and a Full Name column, showing a preview first and skipping students that already exist. |
-| FR-20 | The system shall export classes, students and attendance to an .xlsx spreadsheet using the same template (No.#, Full Name, Morning-in, Morning-out, Afternoon-in, Afternoon-out, QR Code), showing in each check-in and check-out column the day the student was confirmed after scanning. |
+| FR-19 | The system shall import classes and students from an .xlsx spreadsheet with one sheet per class and a Full Name column, showing a preview first and skipping students that already exist. When the Morning-in, Morning-out, Afternoon-in and Afternoon-out columns hold scans, the system shall import them as attendance records for new and existing students alike, skipping records that already exist. |
+| FR-20 | The system shall export classes, students and attendance to an .xlsx spreadsheet using the same template (No.#, Full Name, Morning-in, Morning-out, Afternoon-in, Afternoon-out, QR Code), writing in each check-in and check-out column the date and time (YYYY-MM-DD HH:mm:ss) of every scan, so that importing the file again restores the attendance records. |
 | FR-21 | The system shall save the data of users who are not signed in on their own device, so it is still there after the page is refreshed or reopened. |
 | FR-22 | The system shall let a user who signs in with Google load and save their own classes, students and attendance in their account. The data is private to that account. |
-| FR-23 | The system shall offer to upload the data saved on the device to the account after sign-in when the account has no data yet, and shall show the device data again after log out. |
+| FR-23 | The system shall let a guest record attendance on the device. After sign-in, when the device holds classes, students or attendance that the account does not have, the system shall ask whether to sync the device data to the Google account, send every missing class, student and attendance record, and then check the account to confirm that all of them arrived, sending again any that did not. The system shall show the result of the sync, and shall keep the data on the device and show it again after log out. |
 
 ## Non-functional requirements
 

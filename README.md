@@ -5,9 +5,9 @@ A QR code-based student attendance monitoring system for event premises. Student
 ## Features
 
 - Opens straight on the home screen. Guests can use every feature, with data saved on the device
-- Optional Google sign-in: data is saved in the user's own account and is private to it. Device data can be uploaded after the first sign-in
+- Optional Google sign-in: data is saved in the user's own account and is private to it. After sign-in the app asks to sync the attendance recorded on the device as a guest, then checks that every class, student and attendance record reached the account
 - Manage classes and students, with each student's QR code viewable and downloadable in the app
-- Import and export classes, students and attendance as .xlsx spreadsheets
+- Import and export classes, students and attendance as .xlsx spreadsheets. The all-classes export holds the date and time of every scan, and importing it restores the attendance records
 - Scan a student's QR code with the device camera, review the details, and confirm
 - Morning and afternoon check-in and check-out, with a timestamp for every scan
 - Offline-first: scans are saved on the device and synced when the connection returns
