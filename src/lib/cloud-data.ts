@@ -9,8 +9,35 @@ function client() {
   return supabase;
 }
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+// An error from the cloud. `retryable` means it is worth trying again later: there is no
+// connection, the server is busy, or the sign-in is being renewed. Anything else (a rule of
+// the database, a missing permission) will fail the same way every time.
+export class CloudError extends Error {
+  readonly retryable: boolean;
+  constructor(message: string, retryable: boolean) {
+    super(message);
+    this.retryable = retryable;
+  }
+}
+export const isRetryable = (e: unknown) => !(e instanceof CloudError) || e.retryable;
+
+interface Result {
+  error: { message: string; code?: string } | null;
+  status?: number;
+}
+function check(res: Result) {
+  const e = res.error;
+  if (!e) return;
+  const status = res.status ?? 0; // 0: the request never got an answer (offline)
+  const retryable =
+    status === 0 ||
+    status === 401 ||
+    status === 408 ||
+    status === 429 ||
+    status >= 500 ||
+    e.code === 'PGRST301' ||
+    /jwt|fetch|network|load failed|timeout/i.test(e.message);
+  throw new CloudError(e.message, retryable);
 }
 
 interface ClassRow {
@@ -53,13 +80,13 @@ async function fetchAll<T>(table: string): Promise<T[]> {
   const rows: T[] = [];
   const size = 1000;
   for (let from = 0; ; from += size) {
-    const { data, error } = await client()
+    const res = await client()
       .from(table)
       .select('*')
       .order('id')
       .range(from, from + size - 1);
-    fail(error);
-    const page = (data ?? []) as T[];
+    check(res);
+    const page = (res.data ?? []) as T[];
     rows.push(...page);
     if (page.length < size) break;
   }
@@ -95,47 +122,78 @@ export async function fetchAllData() {
   };
 }
 
-async function insertChunks(table: string, rows: object[], upsertOn?: string) {
+// Rows are added with "do nothing if it exists", so sending the same change twice (for example
+// after a connection dropped before the answer arrived) is harmless.
+async function insertChunks(table: string, rows: object[], upsertOn: string) {
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
     const query = client().from(table);
-    const { error } = upsertOn
-      ? await query.upsert(chunk, { onConflict: upsertOn, ignoreDuplicates: true })
-      : await query.insert(chunk);
-    fail(error);
+    const res = await query.upsert(chunk, { onConflict: upsertOn, ignoreDuplicates: true });
+    check(res);
   }
 }
 
-export const insertClasses = (list: ClassItem[]) => insertChunks('classes', list.map(toClassRow));
-export const insertStudents = (list: Student[]) => insertChunks('students', list.map(toStudentRow));
+export const insertClasses = (list: ClassItem[]) =>
+  insertChunks('classes', list.map(toClassRow), 'id');
+export const insertStudents = (list: Student[]) =>
+  insertChunks('students', list.map(toStudentRow), 'id');
 // A repeated record (same student, day, session and type) is ignored instead of failing.
 export const insertRecords = (list: AttendanceRecord[]) =>
   insertChunks('attendance', list.map(toRecordRow), 'student_id,event_date,session,scan');
 
 export async function renameClassRemote(id: string, className: string) {
-  const { error } = await client().from('classes').update({ class_name: className }).eq('id', id);
-  fail(error);
+  check(await client().from('classes').update({ class_name: className }).eq('id', id));
 }
 export async function deleteClassRemote(id: string) {
-  const { error } = await client().from('classes').delete().eq('id', id);
-  fail(error);
+  check(await client().from('classes').delete().eq('id', id));
 }
 export async function updateStudentRemote(id: string, fullName: string, classId: string) {
-  const { error } = await client()
-    .from('students')
-    .update({ full_name: fullName, class_id: classId })
-    .eq('id', id);
-  fail(error);
+  check(
+    await client().from('students').update({ full_name: fullName, class_id: classId }).eq('id', id),
+  );
 }
 export async function updateTokenRemote(id: string, qrToken: string) {
-  const { error } = await client().from('students').update({ qr_token: qrToken }).eq('id', id);
-  fail(error);
+  check(await client().from('students').update({ qr_token: qrToken }).eq('id', id));
 }
 export async function deleteStudentRemote(id: string) {
-  const { error } = await client().from('students').delete().eq('id', id);
-  fail(error);
+  check(await client().from('students').delete().eq('id', id));
 }
 export async function deleteRecordRemote(id: string) {
-  const { error } = await client().from('attendance').delete().eq('id', id);
-  fail(error);
+  check(await client().from('attendance').delete().eq('id', id));
+}
+
+// A change made on this device that still has to reach the account. Plain data only, so a
+// waiting change can be saved on the device and sent later, even after the app was closed.
+export type Op =
+  | { k: 'classes'; rows: ClassItem[] }
+  | { k: 'students'; rows: Student[] }
+  | { k: 'records'; rows: AttendanceRecord[] }
+  | { k: 'renameClass'; id: string; name: string }
+  | { k: 'deleteClass'; id: string }
+  | { k: 'updateStudent'; id: string; fullName: string; classId: string }
+  | { k: 'setToken'; id: string; token: string }
+  | { k: 'deleteStudent'; id: string }
+  | { k: 'deleteRecord'; id: string };
+
+export async function sendOp(op: Op) {
+  switch (op.k) {
+    case 'classes':
+      return insertClasses(op.rows);
+    case 'students':
+      return insertStudents(op.rows);
+    case 'records':
+      return insertRecords(op.rows);
+    case 'renameClass':
+      return renameClassRemote(op.id, op.name);
+    case 'deleteClass':
+      return deleteClassRemote(op.id);
+    case 'updateStudent':
+      return updateStudentRemote(op.id, op.fullName, op.classId);
+    case 'setToken':
+      return updateTokenRemote(op.id, op.token);
+    case 'deleteStudent':
+      return deleteStudentRemote(op.id);
+    case 'deleteRecord':
+      return deleteRecordRemote(op.id);
+  }
 }

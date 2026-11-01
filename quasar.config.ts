@@ -1,7 +1,41 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from '#q-app';
+import type { Plugin } from 'vite';
+
+// Writes sw.js into the build: service-worker/sw.template.js with the list of every file of
+// this release, so the app can be cached completely and works offline.
+function offlineServiceWorker(): Plugin {
+  return {
+    name: 'qr-attendance-service-worker',
+    apply: 'build',
+    enforce: 'post', // after Vite has written index.html into the bundle
+    generateBundle(_options, bundle) {
+      const index = bundle['index.html'];
+      if (!index) throw new Error('The service worker needs index.html in the build.');
+      const files = [
+        ...Object.keys(bundle).filter((f) => !f.endsWith('.map')),
+        'manifest.webmanifest',
+        'favicon.ico',
+        'icons/icon-192x192.png',
+        'icons/icon-512x512.png',
+        'icons/apple-icon-180x180.png',
+      ];
+      const html = index.type === 'asset' ? String(index.source) : '';
+      const version = createHash('sha1')
+        .update(files.join('|') + html)
+        .digest('hex')
+        .slice(0, 10);
+      const source = readFileSync('service-worker/sw.template.js', 'utf8')
+        .replace('__VERSION__', version)
+        .replace('__FILES__', JSON.stringify(files));
+      this.emitFile({ type: 'asset', fileName: 'sw.js', source });
+    },
+  };
+}
 
 export default defineConfig((/* ctx */) => {
   return {
@@ -11,7 +45,7 @@ export default defineConfig((/* ctx */) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: [],
+    boot: ['register-sw'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -55,7 +89,9 @@ export default defineConfig((/* ctx */) => {
       // minify: false,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      extendViteConf(viteConf, { isClient }) {
+        if (isClient) (viteConf.plugins ??= []).push(offlineServiceWorker());
+      },
       // viteVuePluginOptions: {},
 
       // to write components with JSX/TSX:

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import * as cloud from '../lib/cloud-data';
+import * as offline from '../lib/offline-store';
 import { useAuthStore } from './auth-store';
 
 export type Session = 'morning' | 'afternoon';
@@ -171,45 +172,158 @@ export const useAttendanceStore = defineStore('attendance', () => {
     { deep: true },
   );
 
-  // ---- Cloud: changes are applied on screen at once, then sent in order ----
-  let chain: Promise<void> = Promise.resolve();
-  const pendingSync = ref(0); // changes shown on screen that have not reached the account yet
-  function sync(task: () => Promise<void>) {
-    if (mode.value !== 'cloud') return;
-    pendingSync.value++;
-    chain = chain
-      .then(task)
-      .catch((e: unknown) => {
-        if (mode.value === 'cloud') syncError.value = message(e);
-      })
-      .finally(() => {
-        pendingSync.value--;
-      });
+  // ---- Cloud: changes are applied on screen at once, saved on the device, then sent ----
+  // Every change goes into the outbox first. The outbox is stored on the device, so a change
+  // made offline (or just before the page is closed) is still sent later, in the same order.
+  const outbox = ref<cloud.Op[]>([]);
+  const pendingSync = computed(() => outbox.value.length);
+  const syncing = ref(false);
+  const retryReason = ref(''); // why waiting changes could not be sent yet (shown while online)
+  let owner = ''; // the account the outbox and the cached copy belong to
+  let cloudReady = false; // the screen holds this account's data, so it may be cached
+  let version = 0; // counts local changes, so a slow download never overwrites newer ones
+  let draining: Promise<void> | null = null;
+
+  function persistOutbox() {
+    if (owner && !offline.saveOutbox(owner, outbox.value)) saveFailed.value = true;
   }
-  // Resolves when everything waiting to be sent has been sent.
-  const flush = () => chain;
+  let cacheTimer: ReturnType<typeof setTimeout> | undefined;
+  function persistCacheNow() {
+    clearTimeout(cacheTimer);
+    if (mode.value !== 'cloud' || !cloudReady || !owner) return;
+    const ok = offline.saveCache(owner, {
+      classes: classes.value,
+      students: students.value,
+      records: records.value,
+    });
+    saveFailed.value = !ok;
+  }
+  watch(
+    [classes, students, records],
+    () => {
+      if (mode.value !== 'cloud' || !cloudReady) return;
+      clearTimeout(cacheTimer);
+      cacheTimer = setTimeout(persistCacheNow, 500);
+    },
+    { deep: true },
+  );
+
+  function enqueue(op: cloud.Op) {
+    if (mode.value !== 'cloud') return;
+    version++;
+    outbox.value.push(op);
+    persistOutbox();
+    void drain();
+  }
+
+  // Sends the waiting changes one by one. Stops at the first one that cannot be sent yet
+  // (no connection, server busy) and keeps it for the next try. A change the server rejects
+  // for good is dropped and reported, so it cannot block everything behind it.
+  function drain(): Promise<void> {
+    if (mode.value !== 'cloud' || !owner) return Promise.resolve();
+    if (draining) return draining;
+    const who = owner;
+    syncing.value = true;
+    const run = (async () => {
+      while (outbox.value.length && owner === who && navigator.onLine) {
+        const op = outbox.value[0]!;
+        try {
+          await cloud.sendOp(op);
+          retryReason.value = '';
+        } catch (e) {
+          if (owner !== who) return;
+          if (cloud.isRetryable(e)) {
+            retryReason.value = message(e);
+            return;
+          }
+          syncError.value ||= message(e);
+        }
+        if (owner !== who) return;
+        outbox.value.shift();
+        persistOutbox();
+      }
+    })();
+    // Cleared only after `draining` is set, even when there was nothing to send.
+    draining = run.finally(() => {
+      syncing.value = false;
+      draining = null;
+    });
+    return draining;
+  }
+  // Resolves when everything that could be sent has been sent.
+  const flush = () => drain();
+
+  // Try again when the connection returns, when the app comes back to the front, and every
+  // 15 seconds while changes are waiting.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => void drain());
+    window.addEventListener('pagehide', persistCacheNow);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void drain();
+      else persistCacheNow();
+    });
+    setInterval(() => {
+      if (outbox.value.length) void drain();
+    }, 15000);
+  }
+
+  function useData(data: SavedData) {
+    classes.value = data.classes;
+    students.value = data.students;
+    records.value = data.records;
+  }
 
   let loadToken = 0;
+  // Opens the signed-in account. The copy kept on the device is shown at once, waiting
+  // changes are sent, and then the account's data is downloaded. Without a connection the
+  // copy on the device is used.
   async function enterCloud() {
     const token = ++loadToken;
     mode.value = 'cloud';
-    loading.value = true;
     loadError.value = '';
     syncError.value = '';
+    retryReason.value = '';
     guestOffer.value = null;
+    cloudReady = false;
+    owner = auth.userId;
+    outbox.value = offline.loadOutbox(owner);
+    const cached = offline.loadCache(owner);
+    if (cached) {
+      useData(cached);
+      cloudReady = true;
+      loading.value = false;
+    } else {
+      loading.value = true;
+    }
     try {
-      const data = await cloud.fetchAllData();
+      await drain();
       if (token !== loadToken) return;
-      classes.value = data.classes;
-      students.value = data.students;
-      records.value = data.records;
+      // Changes still waiting: the screen already shows them, so do not replace it.
+      if (cached && outbox.value.length) return;
+      const seen = version;
+      let data: SavedData;
+      try {
+        data = await cloud.fetchAllData();
+      } catch (e) {
+        if (cached) return; // offline or busy: keep working from the copy on this device
+        throw e;
+      }
+      if (token !== loadToken) return;
+      if (seen !== version) return; // changed while downloading: the next refresh will catch up
+      useData(data);
+      cloudReady = true;
+      persistCacheNow();
       const accountIsEmpty = !data.classes.length && !data.students.length && !data.records.length;
       const guest = loadSaved();
       if (accountIsEmpty && (guest.classes.length || guest.students.length)) {
         guestOffer.value = guest;
       }
     } catch (e) {
-      if (token === loadToken) loadError.value = message(e);
+      if (token === loadToken) {
+        loadError.value = navigator.onLine
+          ? message(e)
+          : 'You are offline, and this account has not been opened on this device before. Connect to the internet once to load it.';
+      }
     } finally {
       if (token === loadToken) loading.value = false;
     }
@@ -217,6 +331,12 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   function enterGuest() {
     loadToken++;
+    clearTimeout(cacheTimer);
+    if (owner) offline.clearCache(owner); // the next person on this device must not see it
+    owner = '';
+    cloudReady = false;
+    outbox.value = [];
+    retryReason.value = '';
     mode.value = 'guest';
     loading.value = false;
     loadError.value = '';
@@ -259,9 +379,9 @@ export const useAttendanceStore = defineStore('attendance', () => {
       await cloud.insertClasses(offer.classes);
       await cloud.insertStudents(studentList);
       await cloud.insertRecords(recordList);
-      classes.value = offer.classes;
-      students.value = studentList;
-      records.value = recordList;
+      useData({ classes: offer.classes, students: studentList, records: recordList });
+      cloudReady = true;
+      persistCacheNow();
       guestOffer.value = null;
     } catch (e) {
       syncError.value = `The upload failed: ${message(e)}`;
@@ -298,7 +418,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
   }
   function addClass(className: string) {
     const cls = createClass(className);
-    sync(() => cloud.insertClasses([cls]));
+    enqueue({ k: 'classes', rows: [cls] });
     return cls.id;
   }
   // Class names are unique (case-insensitive), like the unique rule in the database.
@@ -313,14 +433,14 @@ export const useAttendanceStore = defineStore('attendance', () => {
     if (!cls || classNameTaken(className, id)) return false;
     cls.className = className.trim();
     const name = cls.className;
-    sync(() => cloud.renameClassRemote(id, name));
+    enqueue({ k: 'renameClass', id, name });
     return true;
   }
   // A class that still has students cannot be deleted (on delete restrict).
   function deleteClass(id: string): 'ok' | 'has-students' {
     if (students.value.some((s) => s.classId === id)) return 'has-students';
     classes.value = classes.value.filter((c) => c.id !== id);
-    sync(() => cloud.deleteClassRemote(id));
+    enqueue({ k: 'deleteClass', id });
     return 'ok';
   }
 
@@ -332,7 +452,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
   }
   function addStudent(classId: string, fullName: string, qrToken: string = crypto.randomUUID()) {
     const student = createStudent(classId, fullName, qrToken);
-    sync(() => cloud.insertStudents([student]));
+    enqueue({ k: 'students', rows: [student] });
   }
   function updateStudent(id: string, changes: { fullName: string; classId: string }) {
     const student = studentById(id);
@@ -340,7 +460,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     student.fullName = changes.fullName.trim();
     student.classId = changes.classId;
     const { fullName, classId } = student;
-    sync(() => cloud.updateStudentRemote(id, fullName, classId));
+    enqueue({ k: 'updateStudent', id, fullName, classId });
   }
   // Deleting a student also deletes their attendance records (on delete cascade).
   function deleteStudent(id: string) {
@@ -348,7 +468,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     if (student && pendingToken.value === student.qrToken) pendingToken.value = null;
     students.value = students.value.filter((s) => s.id !== id);
     records.value = records.value.filter((r) => r.studentId !== id);
-    sync(() => cloud.deleteStudentRemote(id));
+    enqueue({ k: 'deleteStudent', id });
   }
   // Gives the student a new QR token. Attendance records stay linked by student id.
   function regenerateToken(id: string) {
@@ -357,7 +477,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     if (pendingToken.value === student.qrToken) pendingToken.value = null;
     const token = crypto.randomUUID();
     student.qrToken = token;
-    sync(() => cloud.updateTokenRemote(id, token));
+    enqueue({ k: 'setToken', id, token });
     return token;
   }
 
@@ -370,7 +490,12 @@ export const useAttendanceStore = defineStore('attendance', () => {
       const alreadyThere = c.students.filter((s) =>
         existing.some((e) => sameText(e.fullName, s.fullName)),
       ).length;
-      return { name: c.name, isNewClass: !cls, toAdd: c.students.length - alreadyThere, alreadyThere };
+      return {
+        name: c.name,
+        isNewClass: !cls,
+        toAdd: c.students.length - alreadyThere,
+        alreadyThere,
+      };
     });
   }
 
@@ -409,21 +534,14 @@ export const useAttendanceStore = defineStore('attendance', () => {
         summary.studentsAdded++;
       }
     }
-    sync(async () => {
-      await cloud.insertClasses(newClasses);
-      await cloud.insertStudents(newStudents);
-    });
+    if (newClasses.length) enqueue({ k: 'classes', rows: newClasses });
+    if (newStudents.length) enqueue({ k: 'students', rows: newStudents });
     return summary;
   }
 
   // ---- Attendance ----
   // The date defaults to today (YYYY-MM-DD, local time).
-  function recordFor(
-    studentId: string,
-    session: Session,
-    scan: ScanType,
-    date: string = today(),
-  ) {
+  function recordFor(studentId: string, session: Session, scan: ScanType, date: string = today()) {
     return records.value.find(
       (r) =>
         r.studentId === studentId &&
@@ -449,13 +567,13 @@ export const useAttendanceStore = defineStore('attendance', () => {
     };
     records.value.push(record);
     const row = { ...record };
-    sync(() => cloud.insertRecords([row]));
+    enqueue({ k: 'records', rows: [row] });
     return record;
   }
   // Used by Undo right after a record is saved.
   function removeRecord(id: string) {
     records.value = records.value.filter((r) => r.id !== id);
-    sync(() => cloud.deleteRecordRemote(id));
+    enqueue({ k: 'deleteRecord', id });
   }
 
   return {
@@ -469,6 +587,8 @@ export const useAttendanceStore = defineStore('attendance', () => {
     loadError,
     syncError,
     pendingSync,
+    syncing,
+    retryReason,
     saveFailed,
     guestOffer,
     uploading,

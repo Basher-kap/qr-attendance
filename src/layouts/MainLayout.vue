@@ -6,6 +6,16 @@
         <q-toolbar-title class="cursor-pointer" @click="router.push({ name: 'home' })">
           QR Attendance
         </q-toolbar-title>
+        <div
+          v-if="store.mode === 'cloud' && store.ready"
+          class="row items-center no-wrap q-mr-sm text-caption"
+          role="status"
+          :aria-label="syncLabel"
+        >
+          <q-icon :name="syncIcon" size="20px" :class="{ 'spin-slow': syncActive }" />
+          <span v-if="store.pendingSync" class="q-ml-xs">{{ store.pendingSync }}</span>
+          <q-tooltip>{{ syncLabel }}</q-tooltip>
+        </div>
         <q-btn
           v-if="auth.enabled && auth.ready"
           flat
@@ -89,13 +99,35 @@
           <q-btn flat no-caps label="Dismiss" @click="auth.clearError" />
         </template>
       </q-banner>
-      <q-banner v-if="store.mode === 'cloud' && !online" dense class="bg-orange-2 text-grey-9">
-        You are offline. Changes cannot be saved to your account until you reconnect, so do not
-        rely on anything you record now. Keep this page open and check again when you are back
-        online.
+      <q-banner v-if="updateReady" dense class="bg-blue-1 text-primary">
+        A new version of the app is ready.
+        <template #action>
+          <q-btn flat no-caps label="Update now" @click="applyUpdate" />
+        </template>
+      </q-banner>
+      <q-banner
+        v-if="store.mode === 'cloud' && store.pendingSync > 0"
+        dense
+        class="bg-orange-2 text-grey-9"
+      >
+        <template v-if="!online">
+          You are offline. Your changes are saved on this device and will be sent to your account
+          when you are back online. {{ store.pendingSync }}
+          {{ store.pendingSync === 1 ? 'change is' : 'changes are' }} waiting.
+        </template>
+        <template v-else-if="store.syncing">
+          Sending {{ store.pendingSync }}
+          {{ store.pendingSync === 1 ? 'change' : 'changes' }} to your account.
+        </template>
+        <template v-else>
+          {{ store.pendingSync }}
+          {{ store.pendingSync === 1 ? 'change is' : 'changes are' }} waiting to be sent to your
+          account. They are saved on this device and will be tried again
+          {{ store.retryReason ? `(${store.retryReason})` : '' }}.
+        </template>
       </q-banner>
       <q-banner v-if="store.syncError" dense class="bg-red-1 text-negative">
-        Could not save to your account: {{ store.syncError }}
+        The account did not accept a change: {{ store.syncError }}
         <template #action>
           <q-btn flat no-caps label="Reload data" @click="store.reloadCloud" />
           <q-btn flat no-caps label="Dismiss" @click="store.clearSyncError" />
@@ -132,7 +164,8 @@
             {{ store.pendingSync === 1 ? 'change has' : 'changes have' }} not reached your account
             yet.
           </template>
-          If you log out now, they may be lost.
+          They stay on this device and are sent the next time you sign in with this account. They
+          are lost if you clear the browser's data before then.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat no-caps label="Stay signed in" v-close-popup />
@@ -201,6 +234,7 @@ import { useRouter } from 'vue-router';
 import ImportExportBar from '../components/ImportExportBar.vue';
 import { useAttendanceStore } from '../stores/attendance-store';
 import { useAuthStore } from '../stores/auth-store';
+import { applyUpdate, updateReady } from '../lib/app-update';
 
 const router = useRouter();
 const store = useAttendanceStore();
@@ -232,13 +266,25 @@ async function onAccountClick() {
   }
 }
 
-// Warn when the connection is lost, and when the tab is closed with changes still being sent.
+const syncActive = computed(() => online.value && store.syncing);
+const syncIcon = computed(() =>
+  !online.value ? 'cloud_off' : store.syncing || store.pendingSync ? 'sync' : 'cloud_done',
+);
+const syncLabel = computed(() => {
+  if (!online.value) return 'Offline. Changes are saved on this device.';
+  if (store.syncing) return 'Sending changes to your account';
+  if (store.pendingSync) return 'Changes are waiting to be sent';
+  return 'All changes are saved in your account';
+});
+
+// Changes waiting to be sent are kept on the device, so closing the tab is safe. Only when
+// the device itself refused to store them (see saveFailed) is the visitor warned.
 const online = ref(true);
 const setOnline = () => {
   online.value = navigator.onLine;
 };
 function warnBeforeLeaving(e: BeforeUnloadEvent) {
-  if (store.mode === 'cloud' && (store.pendingSync > 0 || store.syncError)) e.preventDefault();
+  if (store.mode === 'cloud' && store.saveFailed && store.pendingSync > 0) e.preventDefault();
 }
 
 onMounted(() => {
@@ -268,3 +314,14 @@ function saveClass() {
   void router.push({ name: 'manage', params: { classId: id } });
 }
 </script>
+
+<style scoped>
+.spin-slow {
+  animation: spin-slow 1.2s linear infinite;
+}
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
