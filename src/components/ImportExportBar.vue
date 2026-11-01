@@ -23,7 +23,8 @@
         <template v-else>
           <div class="text-grey-7">
             One sheet named "{{ exportDate }} Attendance" with all students. Each cell shows the
-            time of the scan, and each student is marked Present or Absent for that date.
+            time of the scan. Status is Present when all four scans are done, Incomplete when some
+            are missing, and Absent when there are none.
           </div>
           <q-input v-model="exportDate" outlined dense label="Date" mask="####-##-##">
             <template #append>

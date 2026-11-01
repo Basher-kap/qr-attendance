@@ -213,7 +213,8 @@ const DAILY_HEADERS = [
 
 // One sheet named "{date} Attendance" with every student of every class and the time of each
 // check-in and check-out on that date, so a cell never holds more than one value.
-// A student with at least one record on the date is Present, otherwise Absent.
+// Status: Present when all four check-ins and check-outs exist, Incomplete when some are
+// missing, Absent when the student has no record on the date.
 export async function buildDailyExport(data: ExportData, date: string) {
   const Excel = await loadExcel();
   const wb = new Excel.Workbook();
@@ -238,14 +239,20 @@ export async function buildDailyExport(data: ExportData, date: string) {
   ws.autoFilter = { from: 'A1', to: 'H1' };
 
   const timeBySlot = new Map<string, string>();
-  const present = new Set<string>();
   for (const r of data.records) {
     if (r.eventDate !== date) continue;
-    present.add(r.studentId);
     timeBySlot.set(`${r.studentId}|${r.session}|${r.scan}`, clockTime(r.scannedAt));
   }
   const time = (id: string, session: string, scan: string) =>
     timeBySlot.get(`${id}|${session}|${scan}`) ?? '';
+
+  const status = (id: string) => {
+    let count = 0;
+    for (const session of ['morning', 'afternoon'])
+      for (const scan of ['check_in', 'check_out'])
+        if (timeBySlot.has(`${id}|${session}|${scan}`)) count++;
+    return count === 4 ? 'Present' : count === 0 ? 'Absent' : 'Incomplete';
+  };
 
   const classes = [...data.classes].sort((a, b) =>
     a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: 'base' }),
@@ -261,7 +268,7 @@ export async function buildDailyExport(data: ExportData, date: string) {
         time(st.id, 'morning', 'check_out'),
         time(st.id, 'afternoon', 'check_in'),
         time(st.id, 'afternoon', 'check_out'),
-        present.has(st.id) ? 'Present' : 'Absent',
+        status(st.id),
       ]);
     }
   }
