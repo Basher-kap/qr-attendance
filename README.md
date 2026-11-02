@@ -1,4 +1,4 @@
-# QR Attendance
+# QR Attendee
 
 A QR code-based student attendance monitoring system for event premises. Students are registered once and receive a persistent QR code. An attendance clerk scans it on a phone, confirms the student's details, and records morning and afternoon check-in and check-out, even without an internet connection.
 

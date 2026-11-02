@@ -6,7 +6,7 @@
         <q-toolbar-title>
           <div class="qa-brand" @click="router.push({ name: 'home' })">
             <img :src="logoMark" alt="" />
-            <span>QR Attendance</span>
+            <span>QR Attendee</span>
           </div>
         </q-toolbar-title>
         <q-btn
@@ -30,7 +30,7 @@
       <div class="qa-drawer-brand">
         <img :src="logoMark" alt="" />
         <div>
-          <div class="text-subtitle1 text-weight-bold">QR Attendance</div>
+          <div class="text-subtitle1 text-weight-bold">QR Attendee</div>
           <div class="text-caption text-grey-7">Student attendance</div>
         </div>
       </div>
