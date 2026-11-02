@@ -147,6 +147,135 @@
 
     <ImportExportBar ref="sheets" />
 
+    <q-dialog v-model="signInOpen">
+      <q-card style="min-width: 300px; max-width: 420px; width: 100%">
+        <q-card-section class="text-h6">
+          {{ authMode === 'signup' ? 'Create account' : 'Sign in' }}
+        </q-card-section>
+        <q-card-section class="column q-gutter-y-md">
+          <q-btn
+            outline
+            no-caps
+            color="primary"
+            icon="login"
+            label="Continue with Google"
+            @click="googleSignIn"
+          />
+          <div class="row items-center no-wrap text-grey-7">
+            <q-separator class="col" />
+            <span class="q-px-sm">or use an email and password</span>
+            <q-separator class="col" />
+          </div>
+          <q-input
+            v-model="authEmail"
+            outlined
+            dense
+            type="email"
+            autocomplete="email"
+            label="Gmail or other email address"
+            :error="emailTouched && !emailValid"
+            error-message="Enter a valid email address."
+            @blur="emailTouched = true"
+          />
+          <q-input
+            v-if="authMode !== 'forgot'"
+            v-model="authPassword"
+            outlined
+            dense
+            :type="showPassword ? 'text' : 'password'"
+            :autocomplete="authMode === 'signup' ? 'new-password' : 'current-password'"
+            label="Password"
+            :hint="authMode === 'signup' ? 'At least 8 characters' : ''"
+            @keyup.enter="submitAuth"
+          >
+            <template #append>
+              <q-icon
+                :name="showPassword ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input>
+          <q-banner dense class="bg-orange-1 text-grey-9">
+            Use a password made for this app. Never type your Google password here. The app cannot
+            check it, and Google sign-in is the button above.
+          </q-banner>
+          <q-banner
+            v-if="authNotice"
+            dense
+            :class="authNoticeOk ? 'bg-green-1 text-grey-9' : 'bg-red-1 text-negative'"
+          >
+            {{ authNotice }}
+          </q-banner>
+          <div class="row justify-between text-caption">
+            <a
+              v-if="authMode !== 'signin'"
+              class="text-primary cursor-pointer"
+              @click="switchAuthMode('signin')"
+              >Have an account? Sign in</a
+            >
+            <a v-else class="text-primary cursor-pointer" @click="switchAuthMode('signup')"
+              >Create account</a
+            >
+            <a
+              v-if="authMode !== 'forgot'"
+              class="text-primary cursor-pointer"
+              @click="switchAuthMode('forgot')"
+              >Forgot password</a
+            >
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat no-caps label="Cancel" v-close-popup />
+          <q-btn
+            color="primary"
+            no-caps
+            :loading="authBusy"
+            :disable="!canSubmitAuth"
+            :label="
+              authMode === 'signup'
+                ? 'Create account'
+                : authMode === 'forgot'
+                  ? 'Send reset link'
+                  : 'Sign in'
+            "
+            @click="submitAuth"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog :model-value="auth.recovering" persistent>
+      <q-card style="min-width: 300px; max-width: 420px; width: 100%">
+        <q-card-section class="text-h6">Choose a new password</q-card-section>
+        <q-card-section class="column q-gutter-y-sm">
+          <q-input
+            v-model="newPassword"
+            outlined
+            dense
+            type="password"
+            autocomplete="new-password"
+            label="New password"
+            hint="At least 8 characters"
+            @keyup.enter="saveNewPassword"
+          />
+          <q-banner v-if="authNotice" dense class="bg-red-1 text-negative">
+            {{ authNotice }}
+          </q-banner>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn
+            color="primary"
+            no-caps
+            label="Save password"
+            :loading="authBusy"
+            :disable="newPassword.length < 8"
+            @click="saveNewPassword"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="logoutOpen">
       <q-card style="min-width: 300px; max-width: 420px">
         <q-card-section class="text-h6">Log out with unsaved changes?</q-card-section>
@@ -306,7 +435,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ImportExportBar from '../components/ImportExportBar.vue';
 import { useAttendanceStore } from '../stores/attendance-store';
@@ -332,9 +461,89 @@ async function logOut() {
   await auth.signOut();
 }
 
+// ---- Sign-in dialog: Google, or an email and a password made for this app ----
+const signInOpen = ref(false);
+const authMode = ref<'signin' | 'signup' | 'forgot'>('signin');
+const authEmail = ref('');
+const authPassword = ref('');
+const showPassword = ref(false);
+const emailTouched = ref(false);
+const authBusy = ref(false);
+const authNotice = ref('');
+const authNoticeOk = ref(false);
+const newPassword = ref('');
+
+const emailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail.value.trim()));
+const canSubmitAuth = computed(
+  () =>
+    emailValid.value &&
+    (authMode.value === 'forgot' ||
+      (authMode.value === 'signup'
+        ? authPassword.value.length >= 8
+        : authPassword.value.length > 0)),
+);
+
+function switchAuthMode(mode: 'signin' | 'signup' | 'forgot') {
+  authMode.value = mode;
+  authNotice.value = '';
+}
+
+async function googleSignIn() {
+  signInOpen.value = false;
+  await auth.signIn();
+}
+
+async function submitAuth() {
+  if (!canSubmitAuth.value || authBusy.value) return;
+  authBusy.value = true;
+  authNotice.value = '';
+  try {
+    const email = authEmail.value;
+    const result =
+      authMode.value === 'signup'
+        ? await auth.signUpWithPassword(email, authPassword.value)
+        : authMode.value === 'forgot'
+          ? await auth.sendPasswordReset(email)
+          : await auth.signInWithPassword(email, authPassword.value);
+    authNotice.value = result.message;
+    authNoticeOk.value = result.ok;
+    if (result.ok && authMode.value === 'signup' && result.message) authMode.value = 'signin';
+    authPassword.value = '';
+    // A successful sign-in closes the dialog through the watch below.
+  } finally {
+    authBusy.value = false;
+  }
+}
+
+async function saveNewPassword() {
+  authBusy.value = true;
+  authNotice.value = '';
+  try {
+    const result = await auth.setNewPassword(newPassword.value);
+    if (result.ok) newPassword.value = '';
+    else authNotice.value = result.message;
+  } finally {
+    authBusy.value = false;
+  }
+}
+
+watch(
+  () => auth.signedIn,
+  (signedIn) => {
+    if (signedIn) {
+      signInOpen.value = false;
+      authPassword.value = '';
+      authNotice.value = '';
+    }
+  },
+);
+
 async function onAccountClick() {
   if (!auth.signedIn) {
-    await auth.signIn();
+    authMode.value = 'signin';
+    authNotice.value = '';
+    emailTouched.value = false;
+    signInOpen.value = true;
   } else if (store.pendingSync > 0 || store.syncError) {
     logoutOpen.value = true; // changes would be lost: ask first
   } else {

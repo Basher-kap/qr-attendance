@@ -5,7 +5,7 @@ A QR code-based student attendance monitoring system for event premises. Student
 ## Features
 
 - Opens straight on the home screen. Guests can use every feature, with data saved on the device
-- Optional Google sign-in: data is saved in the user's own account and is private to it. After sign-in the app asks to sync the attendance recorded on the device as a guest, then checks that every class, student and attendance record reached the account
+- Optional sign-in with Google, or with an email and a password made for this app (the app never asks for a Google password): data is saved in the user's own account and is private to it. After sign-in the app asks to sync the attendance recorded on the device as a guest, then checks that every class, student and attendance record reached the account
 - Manage classes and students, with each student's QR code viewable and downloadable in the app
 - Import and export classes, students and attendance as .xlsx spreadsheets. The all-classes export holds the date and time of every scan, and importing it restores the attendance records
 - Scan a student's QR code with the device camera, review the details, and confirm
@@ -58,7 +58,15 @@ npm install
 npm run dev
 ```
 
-The app opens at `http://localhost:9000`. Supabase configuration will be documented here once the backend is connected.
+The app opens at `http://localhost:9000`.
+
+### Email and password sign-in (Supabase settings)
+
+In the Supabase dashboard, open Authentication and check:
+
+- **Providers → Email** is enabled. Keep **Confirm email** on, so only the owner of an address can use it.
+- **URL Configuration**: the site URL and redirect URLs include your Vercel domain and `http://localhost:9000`. Confirmation and reset links return there.
+- Supabase links a Google login and an email login that share the same *confirmed* address, so both open the same data. Without confirmation they would be separate accounts. Supabase configuration will be documented here once the backend is connected.
 
 ## Project structure
 

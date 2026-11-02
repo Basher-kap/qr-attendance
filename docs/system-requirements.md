@@ -27,6 +27,7 @@
 | FR-21 | The system shall save the data of users who are not signed in on their own device, so it is still there after the page is refreshed or reopened. |
 | FR-22 | The system shall let a user who signs in with Google load and save their own classes, students and attendance in their account. The data is private to that account. |
 | FR-23 | The system shall let a guest record attendance on the device. After sign-in, when the device holds classes, students or attendance that the account does not have, the system shall ask whether to sync the device data to the Google account, send every missing class, student and attendance record, and then check the account to confirm that all of them arrived, sending again any that did not. The system shall show the result of the sync, and shall keep the data on the device and show it again after log out. |
+| FR-24 | The system shall let a user sign in or create an account with an email address (such as a Gmail address) and a password chosen for this app, as an alternative to Google sign-in, and shall let the user reset a forgotten password by email. The system shall never ask for a Google account password. Both ways lead to the same private, per-account data. |
 
 ## Non-functional requirements
 
@@ -37,3 +38,4 @@
 | NFR-03 | The QR token shall be unguessable, and access rules shall be enforced by the database (row level security) so each account sees only its own data. |
 | NFR-04 | Secret keys shall never be stored in the repository or in client code. |
 | NFR-05 | Recording an attendance scan shall take as few steps as possible. |
+| NFR-06 | Passwords shall be handled only by Supabase Auth (stored as hashes), never kept by the app, and the sign-in form shall tell users not to enter their Google password. |
