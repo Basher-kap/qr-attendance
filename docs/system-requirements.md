@@ -28,6 +28,7 @@
 | FR-22 | The system shall let a user who signs in with Google load and save their own classes, students and attendance in their account. The data is private to that account. |
 | FR-23 | The system shall let a guest record attendance on the device. After sign-in, when the device holds classes, students or attendance that the account does not have, the system shall ask whether to sync the device data to the Google account, send every missing class, student and attendance record, and then check the account to confirm that all of them arrived, sending again any that did not. The system shall show the result of the sync, and shall keep the data on the device and show it again after log out. |
 | FR-24 | The system shall let a user sign in or create an account with an email address (such as a Gmail address) and a password chosen for this app, as an alternative to Google sign-in, and shall let the user reset a forgotten password by email. The system shall never ask for a Google account password. Both ways lead to the same private, per-account data. |
+| FR-25 | The system shall let a user check attendance without the camera by typing part of a student's name or class on the Scan page. The system shall list only the matching students (at most five at a time, with their class) and, when one is chosen, continue to the same confirmation step as a scanned QR code. |
 
 ## Non-functional requirements
 
