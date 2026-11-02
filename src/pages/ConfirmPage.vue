@@ -2,9 +2,12 @@
   <q-page padding>
     <div v-if="student" class="column q-gutter-y-md" style="max-width: 480px; margin: 0 auto">
       <q-card flat bordered>
-        <q-card-section>
-          <div class="text-h6">{{ student.fullName }}</div>
-          <div class="text-caption text-grey-7">{{ className }}</div>
+        <q-card-section class="row items-center no-wrap q-gutter-x-md">
+          <div class="student-avatar">{{ initial }}</div>
+          <div>
+            <div class="text-h6">{{ student.fullName }}</div>
+            <div class="text-caption text-grey-7">{{ className }}</div>
+          </div>
         </q-card-section>
         <q-separator />
         <q-list>
@@ -102,6 +105,7 @@ const store = useAttendanceStore();
 const student = computed(() =>
   store.pendingToken ? store.studentByToken(store.pendingToken) : undefined,
 );
+const initial = computed(() => student.value?.fullName.trim().charAt(0).toUpperCase() ?? '');
 const className = computed(() =>
   student.value ? (store.classById(student.value.classId)?.className ?? '') : '',
 );
@@ -185,3 +189,18 @@ function go(name: 'home' | 'scan') {
   void router.push({ name });
 }
 </script>
+
+<style scoped>
+.student-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--qa-gradient);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+</style>

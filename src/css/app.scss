@@ -1,1 +1,125 @@
-// app global css
+// App-wide look. Colors follow the logo (see quasar.variables.scss).
+
+:root {
+  --qa-blue: #3f80ea;
+  --qa-teal: #4a92b8;
+  --qa-green: #5fa95a;
+  --qa-ink: #1f2a3d;
+  --qa-muted: #66758c;
+  --qa-bg: #f3f7fc;
+  --qa-surface: #ffffff;
+  --qa-line: #e1e8f2;
+  --qa-radius: 16px;
+  // The logo's fade, used on the header and the main buttons. The green end is a little deeper
+  // than the logo's so white text on it stays readable.
+  --qa-gradient: linear-gradient(110deg, #2f6fde 0%, #3a8aa8 55%, #3f9e63 100%);
+  --qa-gradient-soft: linear-gradient(110deg, rgba(63, 128, 234, 0.12), rgba(95, 169, 90, 0.14));
+  --qa-shadow: 0 6px 24px rgba(31, 42, 61, 0.08);
+}
+
+body {
+  background: var(--qa-bg);
+  color: var(--qa-ink);
+}
+
+// ---- Shapes: soft corners everywhere ----
+.q-card {
+  border-radius: var(--qa-radius);
+}
+.q-card--bordered {
+  border-color: var(--qa-line);
+}
+.q-dialog .q-card {
+  box-shadow: 0 16px 48px rgba(31, 42, 61, 0.18);
+}
+.q-list--bordered {
+  background: var(--qa-surface);
+  border-color: var(--qa-line);
+  border-radius: var(--qa-radius);
+  overflow: hidden;
+}
+.q-field--outlined .q-field__control {
+  border-radius: 12px;
+}
+.q-btn:not(.q-btn--round) {
+  border-radius: 12px;
+}
+.q-banner {
+  border-radius: 12px;
+  margin: 8px 12px 0;
+}
+.q-badge {
+  border-radius: 8px;
+}
+
+// ---- Main buttons carry the logo gradient ----
+.q-btn.bg-primary:not(.q-btn--outline):not(.q-btn--flat) {
+  background-image: var(--qa-gradient);
+  box-shadow: 0 4px 14px rgba(47, 111, 222, 0.28);
+}
+.q-btn.bg-primary.disabled,
+.q-btn.bg-primary[disabled] {
+  box-shadow: none;
+}
+
+// ---- Header ----
+.qa-header {
+  background: var(--qa-gradient);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(47, 111, 222, 0.25);
+}
+.qa-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+}
+.qa-account {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+// ---- Drawer ----
+.qa-drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  background: var(--qa-gradient-soft);
+  border-bottom: 1px solid var(--qa-line);
+  img {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(47, 111, 222, 0.25);
+  }
+}
+.q-drawer .q-item {
+  border-radius: 12px;
+  margin: 2px 8px;
+}
+.q-drawer .q-item.q-router-link--active {
+  background: rgba(63, 128, 234, 0.12);
+  color: var(--q-primary);
+  font-weight: 500;
+}
+.q-drawer .q-item__label--header {
+  color: var(--qa-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+// ---- Page titles ----
+.text-h6 {
+  color: var(--qa-ink);
+  font-weight: 600;
+}

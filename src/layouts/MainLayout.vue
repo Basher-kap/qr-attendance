@@ -1,17 +1,20 @@
 <template>
   <q-layout view="hHh lpR fFf">
-    <q-header elevated class="bg-primary text-white">
+    <q-header class="qa-header">
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="drawer = !drawer" />
-        <q-toolbar-title class="cursor-pointer" @click="router.push({ name: 'home' })">
-          QR Attendance
+        <q-toolbar-title>
+          <div class="qa-brand" @click="router.push({ name: 'home' })">
+            <img :src="logoMark" alt="" />
+            <span>QR Attendance</span>
+          </div>
         </q-toolbar-title>
         <q-btn
           v-if="auth.enabled && auth.ready"
           flat
           dense
           no-caps
-          class="q-px-sm"
+          class="q-px-sm qa-account"
           @click="onAccountClick"
         >
           <q-avatar v-if="auth.signedIn && auth.avatarUrl" size="28px">
@@ -24,7 +27,14 @@
     </q-header>
 
     <q-drawer v-model="drawer" bordered>
-      <q-list>
+      <div class="qa-drawer-brand">
+        <img :src="logoMark" alt="" />
+        <div>
+          <div class="text-subtitle1 text-weight-bold">QR Attendance</div>
+          <div class="text-caption text-grey-7">Student attendance</div>
+        </div>
+      </div>
+      <q-list class="q-pt-sm">
         <q-item clickable v-ripple :to="{ name: 'home' }" exact @click="drawer = false">
           <q-item-section avatar><q-icon name="home" /></q-item-section>
           <q-item-section>Home</q-item-section>
@@ -149,8 +159,11 @@
 
     <q-dialog v-model="signInOpen">
       <q-card style="min-width: 300px; max-width: 420px; width: 100%">
-        <q-card-section class="text-h6">
-          {{ authMode === 'signup' ? 'Create account' : 'Sign in' }}
+        <q-card-section class="column items-center q-pb-none">
+          <img :src="logoMark" alt="" style="width: 56px; height: 56px; border-radius: 16px" />
+          <div class="text-h6 q-mt-sm">
+            {{ authMode === 'signup' ? 'Create account' : 'Sign in' }}
+          </div>
         </q-card-section>
         <q-card-section class="column q-gutter-y-md">
           <q-btn
@@ -438,6 +451,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ImportExportBar from '../components/ImportExportBar.vue';
+import logoMark from '../assets/logo-mark.svg';
 import { useAttendanceStore } from '../stores/attendance-store';
 import { useAuthStore } from '../stores/auth-store';
 

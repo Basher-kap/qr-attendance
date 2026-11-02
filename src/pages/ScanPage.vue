@@ -233,9 +233,14 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: 340px;
   aspect-ratio: 1;
-  background: #000;
-  border-radius: 12px;
+  /* A dark camera area with the logo's gradient as its border. */
+  border: 4px solid transparent;
+  background:
+    linear-gradient(#0e1420, #0e1420) padding-box,
+    linear-gradient(135deg, #3f80ea, #5fa95a) border-box;
+  border-radius: 28px;
   overflow: hidden;
+  box-shadow: 0 12px 32px rgba(47, 111, 222, 0.22);
 }
 .scan-video {
   width: 100%;
@@ -245,6 +250,6 @@ onBeforeUnmount(() => {
 .scan-overlay {
   position: absolute;
   inset: 0;
-  background: #eee;
+  background: linear-gradient(160deg, #eaf1fc, #eaf5ec);
 }
 </style>
