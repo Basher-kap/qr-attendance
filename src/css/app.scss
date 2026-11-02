@@ -18,7 +18,11 @@
 }
 
 body {
-  background: var(--qa-bg);
+  // A soft glow of the logo's blue and green behind every page.
+  background:
+    radial-gradient(circle at 15% 0%, rgba(63, 128, 234, 0.14), transparent 45%),
+    radial-gradient(circle at 90% 100%, rgba(95, 169, 90, 0.16), transparent 45%), var(--qa-bg);
+  background-attachment: fixed;
   color: var(--qa-ink);
 }
 
@@ -54,7 +58,8 @@ body {
 
 // ---- Main buttons carry the logo gradient ----
 .q-btn.bg-primary:not(.q-btn--outline):not(.q-btn--flat) {
-  background-image: var(--qa-gradient);
+  // Quasar's .bg-primary sets "background" with !important, so this needs it too.
+  background-image: var(--qa-gradient) !important;
   box-shadow: 0 4px 14px rgba(47, 111, 222, 0.28);
 }
 .q-btn.bg-primary.disabled,
