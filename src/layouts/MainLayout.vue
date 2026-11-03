@@ -198,7 +198,8 @@
             :type="showPassword ? 'text' : 'password'"
             :autocomplete="authMode === 'signup' ? 'new-password' : 'current-password'"
             label="Password"
-            :hint="authMode === 'signup' ? 'At least 8 characters' : ''"
+            :hint="authMode === 'signup' ? `At least ${MIN_PASSWORD_LENGTH} characters` : ''"
+            :maxlength="authMode === 'signup' ? MAX_PASSWORD_LENGTH : undefined"
             @keyup.enter="submitAuth"
           >
             <template #append>
@@ -269,7 +270,8 @@
             type="password"
             autocomplete="new-password"
             label="New password"
-            hint="At least 8 characters"
+            :hint="`At least ${MIN_PASSWORD_LENGTH} characters`"
+            :maxlength="MAX_PASSWORD_LENGTH"
             @keyup.enter="saveNewPassword"
           />
           <q-banner v-if="authNotice" dense class="bg-red-1 text-negative">
@@ -282,7 +284,7 @@
             no-caps
             label="Save password"
             :loading="authBusy"
-            :disable="newPassword.length < 8"
+            :disable="newPassword.length < MIN_PASSWORD_LENGTH"
             @click="saveNewPassword"
           />
         </q-card-actions>
@@ -454,6 +456,7 @@ import ImportExportBar from '../components/ImportExportBar.vue';
 import logoMark from '../assets/logo-mark.svg';
 import { useAttendanceStore } from '../stores/attendance-store';
 import { useAuthStore } from '../stores/auth-store';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../utils/limits';
 
 const router = useRouter();
 const store = useAttendanceStore();
@@ -493,7 +496,7 @@ const canSubmitAuth = computed(
     emailValid.value &&
     (authMode.value === 'forgot' ||
       (authMode.value === 'signup'
-        ? authPassword.value.length >= 8
+        ? authPassword.value.length >= MIN_PASSWORD_LENGTH
         : authPassword.value.length > 0)),
 );
 

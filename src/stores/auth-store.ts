@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { passwordProblem } from '../utils/limits';
 
 export interface AuthResult {
   ok: boolean;
@@ -81,6 +82,13 @@ export const useAuthStore = defineStore('auth', () => {
     if (/rate limit|too many/i.test(message)) {
       return 'Too many attempts. Please wait a few minutes and try again.';
     }
+    // Supabase's own password rules (length, letters, digits, symbols, known leaked passwords).
+    if (
+      /password/i.test(message) &&
+      /(weak|short|least|characters|pwned|leak|should contain)/i.test(message)
+    ) {
+      return `That password is not accepted: ${message}`;
+    }
     return message;
   }
 
@@ -99,6 +107,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function signUpWithPassword(email: string, password: string): Promise<AuthResult> {
     if (!supabase) return { ok: false, message: 'Sign-in is not set up.' };
+    const problem = passwordProblem(password);
+    if (problem) return { ok: false, message: problem };
     try {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -143,6 +153,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Used after the reset link is opened (recovering is true).
   async function setNewPassword(password: string): Promise<AuthResult> {
     if (!supabase) return { ok: false, message: 'Sign-in is not set up.' };
+    const problem = passwordProblem(password);
+    if (problem) return { ok: false, message: problem };
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) return { ok: false, message: friendly(error.message) };

@@ -35,7 +35,7 @@ GitHub Actions (`.github/workflows/security.yml`) runs the first two on every pu
 **Supabase → Authentication**
 
 - Email provider on, **Confirm email** on.
-- Set the minimum password length to 8 or more, and turn on leaked password protection if your plan has it.
+- Set the minimum password length to 8 or more (it must match `MIN_PASSWORD_LENGTH` in `src/utils/limits.ts`; the app checks it too, but only the Supabase setting holds when the app is bypassed). Turn on leaked password protection if your plan has it.
 - Turn on CAPTCHA protection for sign-ups and sign-ins (for example Cloudflare Turnstile) if the site is public. Check the rate limits.
 - URL Configuration: the site URL and redirect URLs list only your real domains. Remove `http://localhost:9000` from the live project (use a separate project for development).
 - Turn off providers you do not use.

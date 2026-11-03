@@ -4,6 +4,22 @@
 
 export const MAX_NAME_LENGTH = 100;
 
+// Passwords. The app refuses a short password before sending it, and Supabase Auth must be set to
+// the same minimum (Authentication > Sign In / Providers > Email > Minimum password length), because
+// only that setting holds when the app is bypassed. Passwords are never trimmed or changed.
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 72; // bcrypt, used by Supabase Auth, ignores anything longer
+
+export function passwordProblem(password: string): string {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `The password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return `The password must be at most ${MAX_PASSWORD_LENGTH} characters.`;
+  }
+  return '';
+}
+
 // Spreadsheet import. An .xlsx file is a zip, so it is checked before it is opened.
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 export const MAX_IMPORT_SHEETS = 50;
