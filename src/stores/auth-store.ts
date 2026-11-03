@@ -38,15 +38,30 @@ export const useAuthStore = defineStore('auth', () => {
     return typeof url === 'string' ? url : '';
   });
 
+  // After a sign-in, Supabase returns to the app with a one-time ?code=... in the address. It is
+  // already used by then (and useless without the key that only this browser holds), but it would
+  // stay in the address bar, the history and any screenshot or shared link, so it is removed.
+  function removeSignInCodeFromUrl() {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has('code')) return;
+      url.searchParams.delete('code');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    } catch {
+      /* the address stays as it is */
+    }
+  }
+
   async function init() {
     if (!supabase || started) return;
     started = true;
     try {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession(); // finishes the sign-in from the ?code=
       session.value = data.session;
     } catch (e) {
       errorMessage.value = e instanceof Error ? e.message : 'Could not check the sign-in.';
     } finally {
+      removeSignInCodeFromUrl();
       ready.value = true;
     }
     supabase.auth.onAuthStateChange((event, next) => {
