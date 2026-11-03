@@ -8,6 +8,14 @@ import type {
   ScanType,
   Student,
 } from '../stores/attendance-store';
+import {
+  cleanName,
+  ImportLimitError,
+  MAX_IMPORT_BYTES,
+  MAX_IMPORT_ROWS_PER_SHEET,
+  MAX_IMPORT_SHEETS,
+  MAX_SCANS_PER_CELL,
+} from './limits';
 
 // Column headers of the QR Attendee spreadsheet template.
 export const HEADERS = [
@@ -219,13 +227,24 @@ export async function buildTemplate() {
 // The attendance columns are read too (see parseScans), so a file made by the export restores each
 // student's attendance. A QR Code value is kept when it contains a valid code.
 export async function parseStudents(buffer: ArrayBuffer): Promise<ImportPlan> {
+  // Checked before the zip is opened, so an oversized file cannot freeze or crash the page.
+  if (buffer.byteLength > MAX_IMPORT_BYTES) {
+    throw new ImportLimitError(
+      `This file is too large. Please use a file under ${MAX_IMPORT_BYTES / 1024 / 1024} MB.`,
+    );
+  }
   const Excel = await loadExcel();
   const wb = new Excel.Workbook();
   await wb.xlsx.load(buffer);
+  if (wb.worksheets.length > MAX_IMPORT_SHEETS) {
+    throw new ImportLimitError(
+      `This file has too many sheets (the limit is ${MAX_IMPORT_SHEETS}).`,
+    );
+  }
 
   const plan: ImportPlan = { classes: [], warnings: [] };
   wb.eachSheet((ws) => {
-    const className = ws.name.replace(/\s+/g, ' ').trim();
+    const className = cleanName(ws.name);
     if (!className) return;
 
     let headerRow = 0;
@@ -252,9 +271,15 @@ export async function parseStudents(buffer: ArrayBuffer): Promise<ImportPlan> {
 
     const seen = new Set<string>();
     const students: ImportPlan['classes'][number]['students'] = [];
-    for (let r = headerRow + 1; r <= ws.rowCount; r++) {
+    const lastRow = Math.min(ws.rowCount, headerRow + MAX_IMPORT_ROWS_PER_SHEET);
+    if (lastRow < ws.rowCount) {
+      plan.warnings.push(
+        `"${className}": only the first ${MAX_IMPORT_ROWS_PER_SHEET} rows were read.`,
+      );
+    }
+    for (let r = headerRow + 1; r <= lastRow; r++) {
       const row = ws.getRow(r);
-      const fullName = row.getCell(nameCol).text.replace(/\s+/g, ' ').trim();
+      const fullName = cleanName(row.getCell(nameCol).text);
       if (!fullName) continue;
       const key = fullName.toLowerCase();
       if (seen.has(key)) {
@@ -271,6 +296,12 @@ export async function parseStudents(buffer: ArrayBuffer): Promise<ImportPlan> {
         const text = cellText(row.getCell(col)).trim();
         if (!text) continue;
         const scans = parseScans(text, slot);
+        if (scans.records.length > MAX_SCANS_PER_CELL) {
+          plan.warnings.push(
+            `"${className}": ${label} of "${fullName}" (row ${r}) has too many dates, so only the first ${MAX_SCANS_PER_CELL} were read.`,
+          );
+          scans.records.length = MAX_SCANS_PER_CELL;
+        }
         records.push(...scans.records);
         if (scans.unreadable) {
           plan.warnings.push(

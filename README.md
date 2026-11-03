@@ -15,13 +15,13 @@ A QR code-based student attendance monitoring system for event premises. Student
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| App | Quasar (Vue 3, TypeScript), PWA mode |
-| Offline storage | IndexedDB via Dexie, Workbox service worker |
-| Authentication | Google OAuth through Supabase Auth (optional) |
-| Database | Supabase (PostgreSQL) with row level security |
-| Hosting | To be decided |
+| Layer           | Technology                                    |
+| --------------- | --------------------------------------------- |
+| App             | Quasar (Vue 3, TypeScript), PWA mode          |
+| Offline storage | IndexedDB via Dexie, Workbox service worker   |
+| Authentication  | Google OAuth through Supabase Auth (optional) |
+| Database        | Supabase (PostgreSQL) with row level security |
+| Hosting         | To be decided                                 |
 
 ## Architecture
 
@@ -66,7 +66,7 @@ In the Supabase dashboard, open Authentication and check:
 
 - **Providers → Email** is enabled. Keep **Confirm email** on, so only the owner of an address can use it.
 - **URL Configuration**: the site URL and redirect URLs include your Vercel domain and `http://localhost:9000`. Confirmation and reset links return there.
-- Supabase links a Google login and an email login that share the same *confirmed* address, so both open the same data. Without confirmation they would be separate accounts. Supabase configuration will be documented here once the backend is connected.
+- Supabase links a Google login and an email login that share the same _confirmed_ address, so both open the same data. Without confirmation they would be separate accounts. Supabase configuration will be documented here once the backend is connected.
 
 ## Project structure
 
@@ -87,3 +87,7 @@ src/         application source
 - [x] Scan flow
 - [ ] Offline sync
 - [x] Deployment (Vercel)
+
+## Security
+
+Security headers, a strict Content Security Policy, database isolation between accounts and automatic checks are built in. Run `npm run security:check` before every deploy (after `npm run build`), and see [docs/security.md](docs/security.md) for the checklist, the Supabase and Google settings to review, and the known limits.

@@ -182,6 +182,7 @@ import {
   parseStudents,
   saveFile,
 } from '../utils/spreadsheet';
+import { ImportLimitError } from '../utils/limits';
 
 const store = useAttendanceStore();
 const busy = ref(false);
@@ -267,8 +268,11 @@ async function onFile(picked: File | File[] | null) {
     plan.value = parsed;
     preview.value = store.previewImport(parsed);
     step.value = 'preview';
-  } catch {
-    error.value = 'This file could not be read. Please use an .xlsx file made from the template.';
+  } catch (e) {
+    error.value =
+      e instanceof ImportLimitError
+        ? e.message
+        : 'This file could not be read. Please use an .xlsx file made from the template.';
   } finally {
     busy.value = false;
   }

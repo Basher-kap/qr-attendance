@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import * as cloud from '../lib/cloud-data';
+import { cleanName } from '../utils/limits';
 import { findMissing, fingerprint, isEmptyData, planMerge, type MergePlan } from '../lib/merge';
 import { useAuthStore } from './auth-store';
 
@@ -443,7 +444,10 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   // ---- Classes ----
   function createClass(className: string) {
-    const cls: ClassItem = { id: crypto.randomUUID(), className };
+    const cls: ClassItem = {
+      id: crypto.randomUUID(),
+      className: cleanName(className) || 'Unnamed',
+    };
     classes.value.push(cls);
     return { ...cls };
   }
@@ -454,7 +458,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
   }
   // Class names are unique (case-insensitive), like the unique rule in the database.
   function classNameTaken(name: string, exceptId?: string) {
-    const wanted = name.trim().toLowerCase();
+    const wanted = cleanName(name).toLowerCase();
     return classes.value.some(
       (c) => c.id !== exceptId && c.className.trim().toLowerCase() === wanted,
     );
@@ -462,7 +466,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
   function renameClass(id: string, className: string) {
     const cls = classById(id);
     if (!cls || classNameTaken(className, id)) return false;
-    cls.className = className.trim();
+    cls.className = cleanName(className) || cls.className;
     const name = cls.className;
     sync(() => cloud.renameClassRemote(id, name));
     return true;
@@ -477,7 +481,12 @@ export const useAttendanceStore = defineStore('attendance', () => {
 
   // ---- Students ----
   function createStudent(classId: string, fullName: string, qrToken: string) {
-    const student: Student = { id: crypto.randomUUID(), classId, fullName, qrToken };
+    const student: Student = {
+      id: crypto.randomUUID(),
+      classId,
+      fullName: cleanName(fullName) || 'Unnamed',
+      qrToken,
+    };
     students.value.push(student);
     return { ...student };
   }
@@ -488,7 +497,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
   function updateStudent(id: string, changes: { fullName: string; classId: string }) {
     const student = studentById(id);
     if (!student) return;
-    student.fullName = changes.fullName.trim();
+    student.fullName = cleanName(changes.fullName) || student.fullName;
     student.classId = changes.classId;
     const { fullName, classId } = student;
     sync(() => cloud.updateStudentRemote(id, fullName, classId));
@@ -582,7 +591,7 @@ export const useAttendanceStore = defineStore('attendance', () => {
     for (const c of plan.classes) {
       let cls: ClassItem | undefined = classes.value.find((x) => sameText(x.className, c.name));
       if (!cls) {
-        cls = createClass(c.name.trim());
+        cls = createClass(c.name);
         newClasses.push(cls);
         summary.classesAdded++;
       }
