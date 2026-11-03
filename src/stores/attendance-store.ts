@@ -251,6 +251,13 @@ export const useAttendanceStore = defineStore('attendance', () => {
       records: records.value,
     });
     if (stats.classesAdded + stats.studentsAdded + stats.recordsAdded === 0) return;
+    // Signing in never opens a prompt by itself: a fellow clerk who signs in on this device must
+    // not be asked to add this device's data to their account by accident. The person has to ask
+    // for it from the menu ("Sync device data"), which names the account the data would go to.
+    if (!force) {
+      offerDeferred.value = true;
+      return;
+    }
     guestOffer.value = guest;
     mergeStats.value = stats;
   }

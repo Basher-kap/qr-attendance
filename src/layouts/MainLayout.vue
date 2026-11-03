@@ -97,7 +97,9 @@
           <q-item-section avatar><q-icon name="cloud_upload" /></q-item-section>
           <q-item-section>
             <q-item-label>Sync device data</q-item-label>
-            <q-item-label caption>Send what this device recorded as a guest</q-item-label>
+            <q-item-label caption>
+              Send what this device recorded as a guest to {{ auth.email || 'this account' }}
+            </q-item-label>
           </q-item-section>
         </q-item>
         <q-item-label
@@ -315,7 +317,7 @@
     <q-dialog :model-value="!!store.guestOffer" persistent>
       <q-card style="min-width: 300px; max-width: 420px">
         <q-card-section class="text-h6"
-          >Sync this device's data to your Google account?</q-card-section
+          >Sync this device's data to {{ auth.email || 'this account' }}?</q-card-section
         >
         <q-card-section v-if="store.guestOffer && store.mergeStats" class="column q-gutter-y-sm">
           <div>
@@ -347,6 +349,10 @@
             {{ store.mergeStats.tokensReplaced === 1 ? 'student gets' : 'students get' }} a new QR
             code because the old one is already used by another student in your account. Print
             {{ store.mergeStats.tokensReplaced === 1 ? 'it' : 'them' }} again.
+          </q-banner>
+          <q-banner dense class="bg-orange-1 text-grey-9">
+            Only sync if this device's data belongs to {{ auth.email || 'this account' }}. If you
+            are signed in as someone else, choose "Not now".
           </q-banner>
           <div class="text-grey-7">
             A copy stays on this device and shows again when you log out.
