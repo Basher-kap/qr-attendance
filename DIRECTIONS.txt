@@ -1,0 +1,17 @@
+
+DIRECTIONS:
+Features:
+User can scan a student’s QR code, or record attendance without the camera by typing the student’s name.
+User can add a class (1st year, 2nd year) and add students to it.
+You can view a specific student to edit, regenerate their QR Code, delete, or check history for each date. Regenerating makes the old printed QR code stop working. Deleting a student permanently deletes their history.
+There is an export and import feature:
+	- You can export all data to a spreadsheet. It keeps every student’s QR code and full attendance history, so it works as your backup. Importing the file restores them.
+	- You can also export into a spreadsheet file based on a specific date for checking and printing purposes.
+
+Two ways to use the app
+
+Guest: nothing to sign in to. Data is saved only on that device and browser, and is erased if the browser’s data is cleared or you switch devices. Export a spreadsheet regularly.
+Signed in: data is saved in your account and is private to it. You can open it from any device.
+
+It would be preferable to create an account for the app using Gmail then create your own password that is NOT based on your Google Account. This is a good feature in case you want to access your fellow attendance clerk's account to check attendance for his/her behalf. If it's "Connect with Google" it is immediate and quick to login in your devices. Just MAKE SURE that when you're trying to access someone else App account, DO NOT SYNC IT, it means you'll have to overwrite all the data in your devices (guest account offline) to that account.
+

@@ -10,7 +10,7 @@ A QR code-based student attendance monitoring system for event premises. Student
 - Import and export classes, students and attendance as .xlsx spreadsheets. The all-classes export holds the date and time of every scan, and importing it restores the attendance records
 - Scan a student's QR code with the device camera, review the details, and confirm
 - Morning and afternoon check-in and check-out, with a timestamp for every scan
-- Offline-first: scans are saved on the device and synced when the connection returns
+- Works offline: after the first visit online, the app opens and records attendance with no internet (guest data is stored on the device; signed-in changes need a connection to save)
 - Installable on phones and desktops (PWA)
 
 ## Tech stack

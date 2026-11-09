@@ -1,7 +1,9 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '#q-app';
+import { offlinePlugin } from './build/offline-plugin.mjs';
 
 export default defineConfig((/* ctx */) => {
   return {
@@ -11,7 +13,7 @@ export default defineConfig((/* ctx */) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: [],
+    boot: ['register-sw'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -55,7 +57,17 @@ export default defineConfig((/* ctx */) => {
       // minify: false,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      // Writes sw.js (the service worker that makes the app work offline) into the build.
+      extendViteConf(viteConf, { isClient }) {
+        if (!isClient) return;
+        viteConf.plugins = viteConf.plugins ?? [];
+        viteConf.plugins.push(
+          offlinePlugin({
+            publicDir: fileURLToPath(new URL('./public', import.meta.url)),
+            template: fileURLToPath(new URL('./build/sw-template.js', import.meta.url)),
+          }),
+        );
+      },
       // viteVuePluginOptions: {},
 
       // to write components with JSX/TSX:
